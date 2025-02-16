@@ -5,48 +5,65 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Edit, Plus, Carrot } from "lucide-react";
+import { Edit, Plus, Carrot, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 interface Ingredient {
   id: number;
   name: string;
-  quantity: number;
-  unit: string;
+  price: number;
+  isActive: boolean;
 }
 
 const Ingredients = () => {
   const { toast } = useToast();
   const [ingredients, setIngredients] = useState<Ingredient[]>([
-    { id: 1, name: "Flour", quantity: 50, unit: "kg" },
-    { id: 2, name: "Tomato Sauce", quantity: 30, unit: "liters" },
-    { id: 3, name: "Mozzarella", quantity: 25, unit: "kg" }
+    { id: 1, name: "Flour", price: 2.99, isActive: true },
+    { id: 2, name: "Tomato Sauce", price: 3.50, isActive: true },
+    { id: 3, name: "Mozzarella", price: 4.99, isActive: false }
   ]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
   const [ingredientName, setIngredientName] = useState("");
-  const [ingredientQuantity, setIngredientQuantity] = useState("");
-  const [ingredientUnit, setIngredientUnit] = useState("");
+  const [ingredientPrice, setIngredientPrice] = useState("");
 
   const handleAddNew = () => {
     setEditingIngredient(null);
     setIngredientName("");
-    setIngredientQuantity("");
-    setIngredientUnit("");
+    setIngredientPrice("");
     setIsDialogOpen(true);
   };
 
   const handleEdit = (ingredient: Ingredient) => {
     setEditingIngredient(ingredient);
     setIngredientName(ingredient.name);
-    setIngredientQuantity(ingredient.quantity.toString());
-    setIngredientUnit(ingredient.unit);
+    setIngredientPrice(ingredient.price.toString());
     setIsDialogOpen(true);
   };
 
+  const handleDelete = (ingredient: Ingredient) => {
+    setIngredients(ingredients.filter(i => i.id !== ingredient.id));
+    toast({
+      title: "Ingredient Deleted",
+      description: `${ingredient.name} has been deleted successfully.`
+    });
+  };
+
+  const handleToggleActive = (ingredient: Ingredient) => {
+    setIngredients(ingredients.map(i => 
+      i.id === ingredient.id 
+        ? { ...i, isActive: !i.isActive }
+        : i
+    ));
+    toast({
+      title: ingredient.isActive ? "Ingredient Disabled" : "Ingredient Enabled",
+      description: `${ingredient.name} has been ${ingredient.isActive ? "disabled" : "enabled"}.`
+    });
+  };
+
   const handleSave = () => {
-    if (!ingredientName || !ingredientQuantity || !ingredientUnit) {
+    if (!ingredientName || !ingredientPrice) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -55,11 +72,11 @@ const Ingredients = () => {
       return;
     }
 
-    const quantity = parseFloat(ingredientQuantity);
-    if (isNaN(quantity)) {
+    const price = parseFloat(ingredientPrice);
+    if (isNaN(price)) {
       toast({
         title: "Error",
-        description: "Please enter a valid quantity",
+        description: "Please enter a valid price",
         variant: "destructive"
       });
       return;
@@ -69,7 +86,7 @@ const Ingredients = () => {
       // Update existing ingredient
       setIngredients(ingredients.map(i => 
         i.id === editingIngredient.id 
-          ? { ...i, name: ingredientName, quantity: quantity, unit: ingredientUnit }
+          ? { ...i, name: ingredientName, price: price }
           : i
       ));
       toast({
@@ -81,8 +98,8 @@ const Ingredients = () => {
       const newIngredient: Ingredient = {
         id: Math.max(...ingredients.map(i => i.id)) + 1,
         name: ingredientName,
-        quantity: quantity,
-        unit: ingredientUnit
+        price: price,
+        isActive: true
       };
       setIngredients([...ingredients, newIngredient]);
       toast({
@@ -109,8 +126,8 @@ const Ingredients = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Ingredient</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Unit</TableHead>
+                <TableHead>Price (£)</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -123,16 +140,37 @@ const Ingredients = () => {
                       <span>{ingredient.name}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{ingredient.quantity}</TableCell>
-                  <TableCell>{ingredient.unit}</TableCell>
+                  <TableCell>£{ingredient.price.toFixed(2)}</TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleEdit(ingredient)}
+                      onClick={() => handleToggleActive(ingredient)}
                     >
-                      <Edit className="h-4 w-4" />
+                      {ingredient.isActive ? (
+                        <ToggleRight className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <ToggleLeft className="h-4 w-4 text-gray-400" />
+                      )}
                     </Button>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(ingredient)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(ingredient)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -158,22 +196,14 @@ const Ingredients = () => {
               />
             </div>
             <div className="space-y-2">
-              <label>Quantity</label>
+              <label>Price (£)</label>
               <Input
                 type="number"
                 step="0.01"
                 min="0"
-                value={ingredientQuantity}
-                onChange={(e) => setIngredientQuantity(e.target.value)}
-                placeholder="e.g., 50"
-              />
-            </div>
-            <div className="space-y-2">
-              <label>Unit</label>
-              <Input
-                value={ingredientUnit}
-                onChange={(e) => setIngredientUnit(e.target.value)}
-                placeholder="e.g., kg"
+                value={ingredientPrice}
+                onChange={(e) => setIngredientPrice(e.target.value)}
+                placeholder="e.g., 2.99"
               />
             </div>
             <Button onClick={handleSave}>

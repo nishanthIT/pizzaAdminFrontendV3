@@ -5,21 +5,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Edit, Plus, Pizza } from "lucide-react";
+import { Edit, Plus, Pizza, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 interface Topping {
   id: number;
   name: string;
   price: number;
+  isActive: boolean;
 }
 
 const Toppings = () => {
   const { toast } = useToast();
   const [toppings, setToppings] = useState<Topping[]>([
-    { id: 1, name: "Pepperoni", price: 1.99 },
-    { id: 2, name: "Mushrooms", price: 1.50 },
-    { id: 3, name: "Extra Cheese", price: 2.00 }
+    { id: 1, name: "Pepperoni", price: 1.99, isActive: true },
+    { id: 2, name: "Mushrooms", price: 1.50, isActive: true },
+    { id: 3, name: "Extra Cheese", price: 2.00, isActive: false }
   ]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -39,6 +40,26 @@ const Toppings = () => {
     setToppingName(topping.name);
     setToppingPrice(topping.price.toString());
     setIsDialogOpen(true);
+  };
+
+  const handleDelete = (topping: Topping) => {
+    setToppings(toppings.filter(t => t.id !== topping.id));
+    toast({
+      title: "Topping Deleted",
+      description: `${topping.name} has been deleted successfully.`
+    });
+  };
+
+  const handleToggleActive = (topping: Topping) => {
+    setToppings(toppings.map(t => 
+      t.id === topping.id 
+        ? { ...t, isActive: !t.isActive }
+        : t
+    ));
+    toast({
+      title: topping.isActive ? "Topping Disabled" : "Topping Enabled",
+      description: `${topping.name} has been ${topping.isActive ? "disabled" : "enabled"}.`
+    });
   };
 
   const handleSave = () => {
@@ -77,7 +98,8 @@ const Toppings = () => {
       const newTopping: Topping = {
         id: Math.max(...toppings.map(t => t.id)) + 1,
         name: toppingName,
-        price: price
+        price: price,
+        isActive: true
       };
       setToppings([...toppings, newTopping]);
       toast({
@@ -105,6 +127,7 @@ const Toppings = () => {
               <TableRow>
                 <TableHead>Topping</TableHead>
                 <TableHead>Price (£)</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -122,10 +145,32 @@ const Toppings = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleEdit(topping)}
+                      onClick={() => handleToggleActive(topping)}
                     >
-                      <Edit className="h-4 w-4" />
+                      {topping.isActive ? (
+                        <ToggleRight className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <ToggleLeft className="h-4 w-4 text-gray-400" />
+                      )}
                     </Button>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(topping)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(topping)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
