@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Menu, X, Home, ShoppingBag, Users, Settings, Pizza, Carrot, Utensils } from "lucide-react";
+import { Menu, X, Home, ShoppingBag, Users, Settings, Pizza, Carrot, Utensils, Ticket } from "lucide-react";
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +12,7 @@ const Sidebar = () => {
     { icon: Pizza, label: "Toppings", href: "/toppings" },
     { icon: Carrot, label: "Ingredients", href: "/ingredients" },
     { icon: Utensils, label: "Pizzas", href: "/pizzas" },
+    { icon: Ticket, label: "Combos & Offers", href: "/combos" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];
 
