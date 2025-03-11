@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,10 +14,12 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ComboItemSelector } from "@/components/combos/ComboItemSelector";
 
 type ComboItem = {
   id: string;
@@ -65,10 +66,10 @@ const Combos = () => {
   };
 
   const handleAddCombo = () => {
-    if (!newCombo.name || !newCombo.image || newCombo.items.length === 0) {
+    if (!newCombo.name || !newCombo.image || newCombo.items.length === 0 || newCombo.discount < 0) {
       toast({
-        title: "Error",
-        description: "Please fill in all required fields",
+        title: "Validation Error",
+        description: "Please fill in all required fields: name, image, at least one item, and valid discount",
         variant: "destructive",
       });
       return;
@@ -128,14 +129,14 @@ const Combos = () => {
         <h1 className="text-3xl font-bold">Combos & Offers</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2" />
-              Add New Combo
-            </Button>
+            <Button>Add New Combo</Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New Combo</DialogTitle>
+              <DialogDescription>
+                Create a new combo by selecting items and setting a discount.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -173,8 +174,9 @@ const Combos = () => {
                   }
                 />
               </div>
-              <div>
-                <Label>Selected Items</Label>
+              <div className="space-y-4">
+                <Label>Add Items to Combo</Label>
+                <ComboItemSelector onAddItem={handleAddItem} />
                 <div className="space-y-2">
                   {newCombo.items.map((item) => (
                     <div
@@ -183,15 +185,7 @@ const Combos = () => {
                     >
                       <span>{item.name}</span>
                       <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min="1"
-                          className="w-20"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleQuantityChange(item.id, Number(e.target.value))
-                          }
-                        />
+                        <span>Qty: {item.quantity}</span>
                         <Button
                           variant="destructive"
                           size="icon"
@@ -204,7 +198,9 @@ const Combos = () => {
                   ))}
                 </div>
               </div>
-              <Button onClick={handleAddCombo}>Create Combo</Button>
+              <Button onClick={handleAddCombo} className="w-full">
+                Create Combo
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
