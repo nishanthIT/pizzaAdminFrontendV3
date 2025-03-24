@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Edit, Plus, Pizza, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface PizzaTopping {
   id: number;
@@ -23,10 +24,15 @@ interface PizzaIngredient {
   quantity: number;
 }
 
+interface PizzaSize {
+  size: 'small' | 'medium' | 'large';
+  price: number;
+}
+
 interface PizzaItem {
   id: number;
   name: string;
-  basePrice: number;
+  sizes: PizzaSize[];
   category: string;
   imageUrl: string;
   toppings: PizzaTopping[];
@@ -42,11 +48,14 @@ const Pizzas = () => {
 
   // Form states
   const [name, setName] = useState("");
-  const [basePrice, setBasePrice] = useState("");
+  const [smallPrice, setSmallPrice] = useState("");
+  const [mediumPrice, setMediumPrice] = useState("");
+  const [largePrice, setLargePrice] = useState("");
   const [category, setCategory] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [selectedToppings, setSelectedToppings] = useState<PizzaTopping[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<PizzaIngredient[]>([]);
+  const [totalPrice, setTotalPrice] = useState("");
 
   // Sample data for toppings and ingredients (you should fetch these from your existing state)
   const availableToppings = [
@@ -66,16 +75,13 @@ const Pizzas = () => {
     { value: "specialty", label: "Specialty" },
   ];
 
-  const calculateTotalPrice = (base: number, toppings: PizzaTopping[], ingredients: PizzaIngredient[]) => {
-    const toppingsTotal = toppings.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const ingredientsTotal = ingredients.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    return base + toppingsTotal + ingredientsTotal;
-  };
-
   const handleAddNew = () => {
     setEditingPizza(null);
     setName("");
-    setBasePrice("");
+    setSmallPrice("");
+    setMediumPrice("");
+    setLargePrice("");
+    setTotalPrice("");
     setCategory("");
     setImageUrl("");
     setSelectedToppings([]);
@@ -86,7 +92,17 @@ const Pizzas = () => {
   const handleEdit = (pizza: PizzaItem) => {
     setEditingPizza(pizza);
     setName(pizza.name);
-    setBasePrice(pizza.basePrice.toString());
+    
+    // Set size prices
+    const smallSize = pizza.sizes.find(s => s.size === 'small');
+    const mediumSize = pizza.sizes.find(s => s.size === 'medium');
+    const largeSize = pizza.sizes.find(s => s.size === 'large');
+    
+    setSmallPrice(smallSize ? smallSize.price.toString() : "");
+    setMediumPrice(mediumSize ? mediumSize.price.toString() : "");
+    setLargePrice(largeSize ? largeSize.price.toString() : "");
+    setTotalPrice(pizza.totalPrice.toString());
+    
     setCategory(pizza.category);
     setImageUrl(pizza.imageUrl);
     setSelectedToppings(pizza.toppings);
@@ -144,7 +160,7 @@ const Pizzas = () => {
   };
 
   const handleSave = () => {
-    if (!name || !basePrice || !category) {
+    if (!name || !smallPrice || !mediumPrice || !largePrice || !category || !totalPrice) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -153,17 +169,25 @@ const Pizzas = () => {
       return;
     }
 
-    const price = parseFloat(basePrice);
-    if (isNaN(price)) {
+    const small = parseFloat(smallPrice);
+    const medium = parseFloat(mediumPrice);
+    const large = parseFloat(largePrice);
+    const total = parseFloat(totalPrice);
+    
+    if (isNaN(small) || isNaN(medium) || isNaN(large) || isNaN(total)) {
       toast({
         title: "Error",
-        description: "Please enter a valid price",
+        description: "Please enter valid prices",
         variant: "destructive"
       });
       return;
     }
 
-    const totalPrice = calculateTotalPrice(price, selectedToppings, selectedIngredients);
+    const sizes: PizzaSize[] = [
+      { size: 'small', price: small },
+      { size: 'medium', price: medium },
+      { size: 'large', price: large }
+    ];
 
     if (editingPizza) {
       setPizzas(pizzas.map(p =>
@@ -171,12 +195,12 @@ const Pizzas = () => {
           ? {
               ...p,
               name,
-              basePrice: price,
+              sizes,
               category,
               imageUrl,
               toppings: selectedToppings,
               ingredients: selectedIngredients,
-              totalPrice
+              totalPrice: total
             }
           : p
       ));
@@ -188,12 +212,12 @@ const Pizzas = () => {
       const newPizza: PizzaItem = {
         id: Math.max(0, ...pizzas.map(p => p.id)) + 1,
         name,
-        basePrice: price,
+        sizes,
         category,
         imageUrl,
         toppings: selectedToppings,
         ingredients: selectedIngredients,
-        totalPrice
+        totalPrice: total
       };
       setPizzas([...pizzas, newPizza]);
       toast({
@@ -222,7 +246,9 @@ const Pizzas = () => {
                 <TableHead>Image</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Base Price (£)</TableHead>
+                <TableHead>Small (£)</TableHead>
+                <TableHead>Medium (£)</TableHead>
+                <TableHead>Large (£)</TableHead>
                 <TableHead>Total Price (£)</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -239,7 +265,9 @@ const Pizzas = () => {
                   </TableCell>
                   <TableCell>{pizza.name}</TableCell>
                   <TableCell>{pizza.category}</TableCell>
-                  <TableCell>£{pizza.basePrice.toFixed(2)}</TableCell>
+                  <TableCell>£{pizza.sizes.find(s => s.size === 'small')?.price.toFixed(2) || '0.00'}</TableCell>
+                  <TableCell>£{pizza.sizes.find(s => s.size === 'medium')?.price.toFixed(2) || '0.00'}</TableCell>
+                  <TableCell>£{pizza.sizes.find(s => s.size === 'large')?.price.toFixed(2) || '0.00'}</TableCell>
                   <TableCell>£{pizza.totalPrice.toFixed(2)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -276,28 +304,73 @@ const Pizzas = () => {
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <label>Pizza Name</label>
+                <Label htmlFor="pizza-name">Pizza Name</Label>
                 <Input
+                  id="pizza-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Margherita"
                 />
               </div>
-              <div className="space-y-2">
-                <label>Base Price (£)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={basePrice}
-                  onChange={(e) => setBasePrice(e.target.value)}
-                  placeholder="e.g., 9.99"
-                />
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="small-price">Small Size Price (£)</Label>
+                  <Input
+                    id="small-price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={smallPrice}
+                    onChange={(e) => setSmallPrice(e.target.value)}
+                    placeholder="e.g., 9.99"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="medium-price">Medium Size Price (£)</Label>
+                  <Input
+                    id="medium-price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={mediumPrice}
+                    onChange={(e) => setMediumPrice(e.target.value)}
+                    placeholder="e.g., 12.99"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="large-price">Large Size Price (£)</Label>
+                  <Input
+                    id="large-price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={largePrice}
+                    onChange={(e) => setLargePrice(e.target.value)}
+                    placeholder="e.g., 15.99"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="total-price">Total Price (£)</Label>
+                  <Input
+                    id="total-price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={totalPrice}
+                    onChange={(e) => setTotalPrice(e.target.value)}
+                    placeholder="e.g., 15.99"
+                  />
+                </div>
               </div>
+              
               <div className="space-y-2">
-                <label>Category</label>
+                <Label htmlFor="category">Category</Label>
                 <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger>
+                  <SelectTrigger id="category">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -310,8 +383,9 @@ const Pizzas = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label>Image</label>
+                <Label htmlFor="image">Image</Label>
                 <Input
+                  id="image"
                   type="file"
                   accept="image/*"
                   onChange={handleImageUpload}
@@ -387,16 +461,6 @@ const Pizzas = () => {
                     </div>
                   ))}
                 </div>
-              </div>
-              <div className="pt-4 border-t">
-                <p className="text-lg font-semibold">
-                  Total Price: £
-                  {calculateTotalPrice(
-                    parseFloat(basePrice) || 0,
-                    selectedToppings,
-                    selectedIngredients
-                  ).toFixed(2)}
-                </p>
               </div>
             </div>
           </div>
