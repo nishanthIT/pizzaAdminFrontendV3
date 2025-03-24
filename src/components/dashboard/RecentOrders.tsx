@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Check, X, Edit, Trash, Search, Award, Info } from "lucide-react";
+import { Edit, Trash, Search, Award, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -11,10 +11,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+interface ToppingItem {
+  name: string;
+  quantity?: number;
+}
+
 interface OrderItem {
   name: string;
   originalToppings: string[];
-  changedToppings: string[];
+  changedToppings: ToppingItem[];
   originalIngredients: string[];
   changedIngredients: string[];
 }
@@ -42,14 +47,19 @@ const RecentOrders = () => {
       customer: "John Doe",
       items: "Pepperoni Pizza, Coke",
       total: "$24.99",
-      status: "Pending",
+      status: "Paid",
       rewardPoints: 150,
       hasChanges: true,
       orderItems: [
         {
           name: "Pepperoni Pizza",
           originalToppings: ["Pepperoni", "Cheese", "Tomato Sauce"],
-          changedToppings: ["Extra Pepperoni", "Cheese", "Tomato Sauce", "Mushrooms"],
+          changedToppings: [
+            { name: "Cheese", quantity: 1 },
+            { name: "Tomato Sauce", quantity: 1 },
+            { name: "Pepperoni", quantity: 2 },
+            { name: "Mushrooms", quantity: 1 }
+          ],
           originalIngredients: ["Wheat Flour", "Water", "Salt", "Yeast"],
           changedIngredients: ["Wheat Flour", "Water", "Salt", "Yeast"],
         }
@@ -67,7 +77,11 @@ const RecentOrders = () => {
         {
           name: "Margherita Pizza",
           originalToppings: ["Basil", "Cheese", "Tomato Sauce"],
-          changedToppings: ["Basil", "Cheese", "Tomato Sauce"],
+          changedToppings: [
+            { name: "Basil", quantity: 1 },
+            { name: "Cheese", quantity: 1 },
+            { name: "Tomato Sauce", quantity: 1 }
+          ],
           originalIngredients: ["Wheat Flour", "Water", "Salt", "Yeast"],
           changedIngredients: ["Wheat Flour", "Water", "Salt", "Yeast"],
         }
@@ -78,14 +92,20 @@ const RecentOrders = () => {
       customer: "Mike Johnson",
       items: "Hawaiian Pizza, Wings",
       total: "$41.75",
-      status: "Rejected",
+      status: "Paid",
       rewardPoints: 95,
       hasChanges: true,
       orderItems: [
         {
           name: "Hawaiian Pizza",
           originalToppings: ["Ham", "Pineapple", "Cheese", "Tomato Sauce"],
-          changedToppings: ["Ham", "Extra Pineapple", "Cheese", "Tomato Sauce", "BBQ Sauce"],
+          changedToppings: [
+            { name: "Ham", quantity: 1 },
+            { name: "Pineapple", quantity: 3 },
+            { name: "Cheese", quantity: 1 },
+            { name: "Tomato Sauce", quantity: 1 },
+            { name: "BBQ Sauce", quantity: 1 }
+          ],
           originalIngredients: ["Wheat Flour", "Water", "Salt", "Yeast"],
           changedIngredients: ["Gluten-Free Flour", "Water", "Salt", "Yeast"],
         }
@@ -103,20 +123,19 @@ const RecentOrders = () => {
         {
           name: "Vegetarian Pizza",
           originalToppings: ["Bell Peppers", "Onions", "Mushrooms", "Cheese", "Tomato Sauce"],
-          changedToppings: ["Bell Peppers", "Onions", "Mushrooms", "Cheese", "Tomato Sauce"],
+          changedToppings: [
+            { name: "Bell Peppers", quantity: 1 },
+            { name: "Onions", quantity: 1 },
+            { name: "Mushrooms", quantity: 1 },
+            { name: "Cheese", quantity: 1 },
+            { name: "Tomato Sauce", quantity: 1 }
+          ],
           originalIngredients: ["Wheat Flour", "Water", "Salt", "Yeast"],
           changedIngredients: ["Wheat Flour", "Water", "Salt", "Yeast"],
         }
       ]
     },
   ]);
-
-  const handleStatusChange = (orderId: string, newStatus: string) => {
-    toast({
-      title: "Order Status Updated",
-      description: `Order ${orderId} has been marked as ${newStatus}`,
-    });
-  };
 
   const handleEditCustomer = (customerId: string) => {
     toast({
@@ -203,33 +222,11 @@ const RecentOrders = () => {
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       order.status === "Paid"
                         ? "bg-green-100 text-green-800"
-                        : order.status === "Rejected"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
                     }`}
                   >
                     {order.status}
                   </span>
-                  {order.status === "Pending" && (
-                    <div className="inline-flex gap-1 ml-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleStatusChange(order.id, "Paid")}
-                      >
-                        <Check className="h-4 w-4 text-green-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleStatusChange(order.id, "Rejected")}
-                      >
-                        <X className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </div>
-                  )}
                 </td>
                 <td className="py-3 px-4">
                   <span
@@ -315,23 +312,31 @@ const RecentOrders = () => {
                       <div className="bg-blue-50 p-3 rounded-md">
                         <span className="text-sm font-medium text-blue-500 block mb-1">Changed:</span>
                         <ul className="list-disc pl-5 text-sm">
-                          {item.changedToppings.map((topping, idx) => (
-                            <li key={idx} className={
-                              !item.originalToppings.includes(topping) ? 'text-blue-600 font-medium' : ''
-                            }>
-                              {topping}
-                              {!item.originalToppings.includes(topping) && ' (added)'}
-                            </li>
-                          ))}
+                          {item.changedToppings.map((topping, idx) => {
+                            const isAdded = !item.originalToppings.includes(topping.name);
+                            const showQuantity = topping.quantity && topping.quantity > 1;
+                            
+                            return (
+                              <li key={idx} className={isAdded ? 'text-blue-600 font-medium' : ''}>
+                                {topping.name}
+                                {showQuantity && ` ${topping.quantity}X`}
+                                {isAdded && ' (added)'}
+                              </li>
+                            );
+                          })}
                         </ul>
                         
-                        {item.originalToppings.map(topping => 
-                          !item.changedToppings.includes(topping) ? (
-                            <div key={topping} className="text-red-600 text-sm mt-1">
-                              <span>- {topping} (removed)</span>
-                            </div>
-                          ) : null
-                        )}
+                        {item.originalToppings.map(topping => {
+                          const exists = item.changedToppings.some(t => t.name === topping);
+                          if (!exists) {
+                            return (
+                              <div key={topping} className="text-red-600 text-sm mt-1">
+                                <span>- {topping} (removed)</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })}
                       </div>
                     </div>
                   </div>
