@@ -37,7 +37,6 @@ interface PizzaItem {
   imageUrl: string;
   toppings: PizzaTopping[];
   ingredients: PizzaIngredient[];
-  totalPrice: number;
 }
 
 const Pizzas = () => {
@@ -55,7 +54,6 @@ const Pizzas = () => {
   const [imageUrl, setImageUrl] = useState("");
   const [selectedToppings, setSelectedToppings] = useState<PizzaTopping[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<PizzaIngredient[]>([]);
-  const [totalPrice, setTotalPrice] = useState("");
 
   // Sample data for toppings and ingredients (you should fetch these from your existing state)
   const availableToppings = [
@@ -81,7 +79,6 @@ const Pizzas = () => {
     setSmallPrice("");
     setMediumPrice("");
     setLargePrice("");
-    setTotalPrice("");
     setCategory("");
     setImageUrl("");
     setSelectedToppings([]);
@@ -101,7 +98,6 @@ const Pizzas = () => {
     setSmallPrice(smallSize ? smallSize.price.toString() : "");
     setMediumPrice(mediumSize ? mediumSize.price.toString() : "");
     setLargePrice(largeSize ? largeSize.price.toString() : "");
-    setTotalPrice(pizza.totalPrice.toString());
     
     setCategory(pizza.category);
     setImageUrl(pizza.imageUrl);
@@ -160,7 +156,7 @@ const Pizzas = () => {
   };
 
   const handleSave = () => {
-    if (!name || !smallPrice || !mediumPrice || !largePrice || !category || !totalPrice) {
+    if (!name || !smallPrice || !mediumPrice || !largePrice || !category) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -172,9 +168,8 @@ const Pizzas = () => {
     const small = parseFloat(smallPrice);
     const medium = parseFloat(mediumPrice);
     const large = parseFloat(largePrice);
-    const total = parseFloat(totalPrice);
     
-    if (isNaN(small) || isNaN(medium) || isNaN(large) || isNaN(total)) {
+    if (isNaN(small) || isNaN(medium) || isNaN(large)) {
       toast({
         title: "Error",
         description: "Please enter valid prices",
@@ -200,7 +195,6 @@ const Pizzas = () => {
               imageUrl,
               toppings: selectedToppings,
               ingredients: selectedIngredients,
-              totalPrice: total
             }
           : p
       ));
@@ -217,7 +211,6 @@ const Pizzas = () => {
         imageUrl,
         toppings: selectedToppings,
         ingredients: selectedIngredients,
-        totalPrice: total
       };
       setPizzas([...pizzas, newPizza]);
       toast({
@@ -249,7 +242,6 @@ const Pizzas = () => {
                 <TableHead>Small (£)</TableHead>
                 <TableHead>Medium (£)</TableHead>
                 <TableHead>Large (£)</TableHead>
-                <TableHead>Total Price (£)</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -268,7 +260,6 @@ const Pizzas = () => {
                   <TableCell>£{pizza.sizes.find(s => s.size === 'small')?.price.toFixed(2) || '0.00'}</TableCell>
                   <TableCell>£{pizza.sizes.find(s => s.size === 'medium')?.price.toFixed(2) || '0.00'}</TableCell>
                   <TableCell>£{pizza.sizes.find(s => s.size === 'large')?.price.toFixed(2) || '0.00'}</TableCell>
-                  <TableCell>£{pizza.totalPrice.toFixed(2)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
@@ -349,19 +340,6 @@ const Pizzas = () => {
                     min="0"
                     value={largePrice}
                     onChange={(e) => setLargePrice(e.target.value)}
-                    placeholder="e.g., 15.99"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="total-price">Total Price (£)</Label>
-                  <Input
-                    id="total-price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={totalPrice}
-                    onChange={(e) => setTotalPrice(e.target.value)}
                     placeholder="e.g., 15.99"
                   />
                 </div>
