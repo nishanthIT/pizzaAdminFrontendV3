@@ -314,12 +314,18 @@ const RecentOrders = () => {
                         <ul className="list-disc pl-5 text-sm">
                           {item.changedToppings.map((topping, idx) => {
                             const isAdded = !item.originalToppings.includes(topping.name);
+                            const isIncreasedQuantity = item.originalToppings.includes(topping.name) && topping.quantity && topping.quantity > 1;
                             const showQuantity = topping.quantity && topping.quantity > 1;
                             
                             return (
-                              <li key={idx} className={isAdded ? 'text-blue-600 font-medium' : ''}>
+                              <li key={idx} className={isAdded || isIncreasedQuantity ? 'text-blue-600 font-medium' : ''}>
                                 {topping.name}
-                                {showQuantity && ` ${topping.quantity}X`}
+                                {showQuantity && (
+                                  <span className={isIncreasedQuantity ? "text-blue-600 font-medium" : ""}>
+                                    {" "}
+                                    {topping.quantity}X
+                                  </span>
+                                )}
                                 {isAdded && ' (added)'}
                               </li>
                             );
