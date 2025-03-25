@@ -1,12 +1,13 @@
 
 import { useState } from "react";
-import { Edit, Trash, Search, Award, Info, MapPin, ShoppingBag } from "lucide-react";
+import { Edit, Trash, Search, Award, Info, MapPin, ShoppingBag, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -24,6 +25,12 @@ interface OrderItem {
   changedIngredients: string[];
 }
 
+interface OrderContactInfo {
+  address?: string;
+  phone: string;
+  type: "delivery" | "pickup";
+}
+
 interface Order {
   id: string;
   customer: string;
@@ -34,6 +41,8 @@ interface Order {
   hasChanges: boolean;
   orderItems: OrderItem[];
   deliveryType: "delivery" | "pickup";
+  address?: string;
+  phone: string;
 }
 
 const RecentOrders = () => {
@@ -41,6 +50,8 @@ const RecentOrders = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [contactInfo, setContactInfo] = useState<OrderContactInfo | null>(null);
+  const [showContactInfo, setShowContactInfo] = useState(false);
   
   const [orders] = useState<Order[]>([
     {
@@ -52,6 +63,8 @@ const RecentOrders = () => {
       rewardPoints: 150,
       hasChanges: true,
       deliveryType: "delivery",
+      address: "123 Main St, Anytown, USA",
+      phone: "555-123-4567",
       orderItems: [
         {
           name: "Pepperoni Pizza",
@@ -76,6 +89,7 @@ const RecentOrders = () => {
       rewardPoints: 280,
       hasChanges: false,
       deliveryType: "pickup",
+      phone: "555-987-6543",
       orderItems: [
         {
           name: "Margherita Pizza",
@@ -99,6 +113,8 @@ const RecentOrders = () => {
       rewardPoints: 95,
       hasChanges: true,
       deliveryType: "delivery",
+      address: "456 Oak Ave, Springfield, USA",
+      phone: "555-555-5555",
       orderItems: [
         {
           name: "Hawaiian Pizza",
@@ -124,6 +140,7 @@ const RecentOrders = () => {
       rewardPoints: 320,
       hasChanges: false,
       deliveryType: "pickup",
+      phone: "555-888-9999",
       orderItems: [
         {
           name: "Vegetarian Pizza",
@@ -159,6 +176,15 @@ const RecentOrders = () => {
   const handleViewDetails = (order: Order) => {
     setSelectedOrder(order);
     setIsDetailsOpen(true);
+  };
+
+  const handleTypeClick = (order: Order) => {
+    setContactInfo({
+      type: order.deliveryType,
+      address: order.address,
+      phone: order.phone
+    });
+    setShowContactInfo(true);
   };
 
   const filteredOrders = orders.filter((order) =>
@@ -238,11 +264,12 @@ const RecentOrders = () => {
                 </td>
                 <td className="py-3 px-4">
                   <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer ${
                       order.deliveryType === "delivery"
-                        ? "bg-indigo-100 text-indigo-800"
-                        : "bg-amber-100 text-amber-800"
+                        ? "bg-indigo-100 text-indigo-800 hover:bg-indigo-200"
+                        : "bg-amber-100 text-amber-800 hover:bg-amber-200"
                     }`}
+                    onClick={() => handleTypeClick(order)}
                   >
                     {order.deliveryType === "delivery" ? (
                       <MapPin className="mr-1 h-3 w-3" />
@@ -412,9 +439,40 @@ const RecentOrders = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Contact Information Dialog */}
+      <Dialog open={showContactInfo} onOpenChange={setShowContactInfo}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {contactInfo?.type === "delivery" ? "Delivery Information" : "Pickup Information"}
+            </DialogTitle>
+            <DialogDescription>
+              Contact details for this order.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {contactInfo?.type === "delivery" && contactInfo?.address && (
+              <div className="flex items-start gap-2">
+                <MapPin className="h-5 w-5 text-gray-500 mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm text-gray-500">Delivery Address</p>
+                  <p className="text-gray-900">{contactInfo.address}</p>
+                </div>
+              </div>
+            )}
+            <div className="flex items-start gap-2">
+              <Phone className="h-5 w-5 text-gray-500 mt-0.5" />
+              <div>
+                <p className="font-medium text-sm text-gray-500">Contact Number</p>
+                <p className="text-gray-900">{contactInfo?.phone}</p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default RecentOrders;
-
