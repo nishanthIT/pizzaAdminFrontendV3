@@ -9,6 +9,7 @@ const Sidebar = () => {
     { icon: Home, label: "Dashboard", href: "/" },
     { icon: ShoppingBag, label: "Orders", href: "/orders" },
     { icon: Users, label: "Customers", href: "/customers" },
+    { icon: Pizza, label: "Categories", href: "/categories" },
     { icon: Pizza, label: "Toppings", href: "/toppings" },
     { icon: Carrot, label: "Ingredients", href: "/ingredients" },
     { icon: Utensils, label: "Pizzas", href: "/pizzas" },

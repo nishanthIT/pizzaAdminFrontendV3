@@ -12,6 +12,7 @@ import Toppings from "./pages/Toppings";
 import Ingredients from "./pages/Ingredients";
 import Pizzas from "./pages/Pizzas";
 import Combos from "./pages/Combos";
+import Categories from "./pages/Categories";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
                 <Route path="/ingredients" element={<Ingredients />} />
                 <Route path="/pizzas" element={<Pizzas />} />
                 <Route path="/combos" element={<Combos />} />
+                <Route path="/categories" element={<Categories />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
