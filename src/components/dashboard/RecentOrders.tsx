@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Edit, Trash, Search, Award, Info } from "lucide-react";
+import { Edit, Trash, Search, Award, Info, MapPin, ShoppingBag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -33,6 +33,7 @@ interface Order {
   rewardPoints: number;
   hasChanges: boolean;
   orderItems: OrderItem[];
+  deliveryType: "delivery" | "pickup";
 }
 
 const RecentOrders = () => {
@@ -50,6 +51,7 @@ const RecentOrders = () => {
       status: "Paid",
       rewardPoints: 150,
       hasChanges: true,
+      deliveryType: "delivery",
       orderItems: [
         {
           name: "Pepperoni Pizza",
@@ -73,6 +75,7 @@ const RecentOrders = () => {
       status: "Paid",
       rewardPoints: 280,
       hasChanges: false,
+      deliveryType: "pickup",
       orderItems: [
         {
           name: "Margherita Pizza",
@@ -95,6 +98,7 @@ const RecentOrders = () => {
       status: "Paid",
       rewardPoints: 95,
       hasChanges: true,
+      deliveryType: "delivery",
       orderItems: [
         {
           name: "Hawaiian Pizza",
@@ -119,6 +123,7 @@ const RecentOrders = () => {
       status: "Paid",
       rewardPoints: 320,
       hasChanges: false,
+      deliveryType: "pickup",
       orderItems: [
         {
           name: "Vegetarian Pizza",
@@ -195,6 +200,9 @@ const RecentOrders = () => {
                 Status
               </th>
               <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
+                Type
+              </th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
                 Changes
               </th>
               <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
@@ -226,6 +234,22 @@ const RecentOrders = () => {
                     }`}
                   >
                     {order.status}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      order.deliveryType === "delivery"
+                        ? "bg-indigo-100 text-indigo-800"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {order.deliveryType === "delivery" ? (
+                      <MapPin className="mr-1 h-3 w-3" />
+                    ) : (
+                      <ShoppingBag className="mr-1 h-3 w-3" />
+                    )}
+                    {order.deliveryType === "delivery" ? "Delivery" : "Pickup"}
                   </span>
                 </td>
                 <td className="py-3 px-4">
@@ -393,3 +417,4 @@ const RecentOrders = () => {
 };
 
 export default RecentOrders;
+
