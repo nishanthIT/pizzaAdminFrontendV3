@@ -336,7 +336,7 @@ const RecentOrders = () => {
                           const exists = item.changedToppings.some(t => t.name === topping);
                           if (!exists) {
                             return (
-                              <div key={topping} className="text-red-600 text-sm mt-1">
+                              <div key={topping} className="text-red-600 font-medium text-sm mt-1">
                                 <span>- {topping} (removed)</span>
                               </div>
                             );
@@ -374,7 +374,7 @@ const RecentOrders = () => {
                         
                         {item.originalIngredients.map(ingredient => 
                           !item.changedIngredients.includes(ingredient) ? (
-                            <div key={ingredient} className="text-red-600 text-sm mt-1">
+                            <div key={ingredient} className="text-red-600 font-medium text-sm mt-1">
                               <span>- {ingredient} (removed)</span>
                             </div>
                           ) : null
