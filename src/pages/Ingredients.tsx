@@ -1,32 +1,66 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Edit, Plus, Carrot, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import {
+  Edit,
+  Plus,
+  Carrot,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-
-interface Ingredient {
-  id: number;
-  name: string;
-  price: number;
-  isActive: boolean;
-}
+import { Ingredient, ingredientService } from "@/services/ingredientService";
 
 const Ingredients = () => {
   const { toast } = useToast();
-  const [ingredients, setIngredients] = useState<Ingredient[]>([
-    { id: 1, name: "Flour", price: 2.99, isActive: true },
-    { id: 2, name: "Tomato Sauce", price: 3.50, isActive: true },
-    { id: 3, name: "Mozzarella", price: 4.99, isActive: false }
-  ]);
-
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
+  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(
+    null
+  );
   const [ingredientName, setIngredientName] = useState("");
   const [ingredientPrice, setIngredientPrice] = useState("");
+
+  useEffect(() => {
+    fetchIngredients();
+  }, []);
+
+  const fetchIngredients = async () => {
+    try {
+      const data = await ingredientService.getIngredients();
+      setIngredients(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch ingredients",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatPrice = (price: string | number): string => {
+    const numPrice = typeof price === "string" ? parseFloat(price) : price;
+    return numPrice.toFixed(2);
+  };
 
   const handleAddNew = () => {
     setEditingIngredient(null);
@@ -38,36 +72,57 @@ const Ingredients = () => {
   const handleEdit = (ingredient: Ingredient) => {
     setEditingIngredient(ingredient);
     setIngredientName(ingredient.name);
-    setIngredientPrice(ingredient.price.toString());
+    setIngredientPrice(formatPrice(ingredient.price));
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (ingredient: Ingredient) => {
-    setIngredients(ingredients.filter(i => i.id !== ingredient.id));
-    toast({
-      title: "Ingredient Deleted",
-      description: `${ingredient.name} has been deleted successfully.`
-    });
+  const handleDelete = async (ingredient: Ingredient) => {
+    try {
+      await ingredientService.deleteIngredient(ingredient.id);
+      setIngredients(ingredients.filter((i) => i.id !== ingredient.id));
+      toast({
+        title: "Ingredient Deleted",
+        description: `${ingredient.name} has been deleted successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete ingredient",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleToggleActive = (ingredient: Ingredient) => {
-    setIngredients(ingredients.map(i => 
-      i.id === ingredient.id 
-        ? { ...i, isActive: !i.isActive }
-        : i
-    ));
-    toast({
-      title: ingredient.isActive ? "Ingredient Disabled" : "Ingredient Enabled",
-      description: `${ingredient.name} has been ${ingredient.isActive ? "disabled" : "enabled"}.`
-    });
+  const handleToggleActive = async (ingredient: Ingredient) => {
+    try {
+      const updatedIngredient = await ingredientService.updateIngredientStatus(
+        ingredient.id,
+        !ingredient.status
+      );
+      setIngredients(
+        ingredients.map((i) => (i.id === ingredient.id ? updatedIngredient : i))
+      );
+      toast({
+        title: ingredient.status ? "Ingredient Disabled" : "Ingredient Enabled",
+        description: `${ingredient.name} has been ${
+          ingredient.status ? "disabled" : "enabled"
+        }.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update ingredient status",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!ingredientName || !ingredientPrice) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -77,39 +132,53 @@ const Ingredients = () => {
       toast({
         title: "Error",
         description: "Please enter a valid price",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    if (editingIngredient) {
-      // Update existing ingredient
-      setIngredients(ingredients.map(i => 
-        i.id === editingIngredient.id 
-          ? { ...i, name: ingredientName, price: price }
-          : i
-      ));
+    try {
+      if (editingIngredient) {
+        // Update existing ingredient
+        const updatedIngredient = await ingredientService.updateIngredient({
+          id: editingIngredient.id,
+          name: ingredientName,
+          price: price,
+        });
+        setIngredients(
+          ingredients.map((i) =>
+            i.id === editingIngredient.id ? updatedIngredient : i
+          )
+        );
+        toast({
+          title: "Ingredient Updated",
+          description: `${ingredientName} has been updated successfully.`,
+        });
+      } else {
+        // Add new ingredient
+        const newIngredient = await ingredientService.addIngredient({
+          name: ingredientName,
+          price: price,
+        });
+        setIngredients([...ingredients, newIngredient]);
+        toast({
+          title: "Ingredient Added",
+          description: `${ingredientName} has been added successfully.`,
+        });
+      }
+      setIsDialogOpen(false);
+    } catch (error) {
       toast({
-        title: "Ingredient Updated",
-        description: `${ingredientName} has been updated successfully.`
-      });
-    } else {
-      // Add new ingredient
-      const newIngredient: Ingredient = {
-        id: Math.max(...ingredients.map(i => i.id)) + 1,
-        name: ingredientName,
-        price: price,
-        isActive: true
-      };
-      setIngredients([...ingredients, newIngredient]);
-      toast({
-        title: "Ingredient Added",
-        description: `${ingredientName} has been added successfully.`
+        title: "Error",
+        description: "Failed to save ingredient",
+        variant: "destructive",
       });
     }
-
-    setIsDialogOpen(false);
   };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -140,14 +209,14 @@ const Ingredients = () => {
                       <span>{ingredient.name}</span>
                     </div>
                   </TableCell>
-                  <TableCell>£{ingredient.price.toFixed(2)}</TableCell>
+                  <TableCell>£{formatPrice(ingredient.price)}</TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleToggleActive(ingredient)}
                     >
-                      {ingredient.isActive ? (
+                      {ingredient.status ? (
                         <ToggleRight className="h-4 w-4 text-green-500" />
                       ) : (
                         <ToggleLeft className="h-4 w-4 text-gray-400" />

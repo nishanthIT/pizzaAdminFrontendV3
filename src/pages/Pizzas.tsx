@@ -1,31 +1,60 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Edit, Plus, Pizza, Trash2, X } from "lucide-react";
+import {
+  Edit,
+  Plus,
+  PizzaIcon,
+  Trash2,
+  X,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Pizza, pizzaService } from "@/services/pizzaService";
+import { Category, categoryService } from "@/services/categoryService";
+import { Topping, toppingService } from "@/services/toppingService";
+import { Ingredient, ingredientService } from "@/services/ingredientService";
 
 interface PizzaTopping {
-  id: number;
+  id: string;
   name: string;
   price: number;
   quantity: number;
 }
 
 interface PizzaIngredient {
-  id: number;
+  id: string;
   name: string;
   price: number;
   quantity: number;
 }
 
 interface PizzaSize {
-  size: 'small' | 'medium' | 'large';
+  size: "small" | "medium" | "large";
   price: number;
 }
 
@@ -41,37 +70,61 @@ interface PizzaItem {
 
 const Pizzas = () => {
   const { toast } = useToast();
-  const [pizzas, setPizzas] = useState<PizzaItem[]>([]);
+  const [pizzas, setPizzas] = useState<Pizza[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPizza, setEditingPizza] = useState<PizzaItem | null>(null);
+  const [editingPizza, setEditingPizza] = useState<Pizza | null>(null);
+
+  // Available items states
+  const [availableCategories, setAvailableCategories] = useState<Category[]>(
+    []
+  );
+  const [availableToppings, setAvailableToppings] = useState<Topping[]>([]);
+  const [availableIngredients, setAvailableIngredients] = useState<
+    Ingredient[]
+  >([]);
 
   // Form states
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [smallPrice, setSmallPrice] = useState("");
   const [mediumPrice, setMediumPrice] = useState("");
   const [largePrice, setLargePrice] = useState("");
   const [category, setCategory] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [selectedToppings, setSelectedToppings] = useState<PizzaTopping[]>([]);
-  const [selectedIngredients, setSelectedIngredients] = useState<PizzaIngredient[]>([]);
+  const [selectedIngredients, setSelectedIngredients] = useState<
+    PizzaIngredient[]
+  >([]);
 
-  // Sample data for toppings and ingredients (you should fetch these from your existing state)
-  const availableToppings = [
-    { id: 1, name: "Pepperoni", price: 1.99, quantity: 1 },
-    { id: 2, name: "Mushrooms", price: 1.50, quantity: 1 },
-  ];
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
 
-  const availableIngredients = [
-    { id: 1, name: "Flour", price: 2.99, quantity: 1 },
-    { id: 2, name: "Tomato Sauce", price: 3.50, quantity: 1 },
-  ];
+  const fetchInitialData = async () => {
+    try {
+      const [pizzasData, categoriesData, toppingsData, ingredientsData] =
+        await Promise.all([
+          pizzaService.getAllPizzas(),
+          categoryService.getCategories(),
+          toppingService.getToppings(),
+          ingredientService.getIngredients(),
+        ]);
 
-  const categories = [
-    { value: "veg", label: "Vegetarian" },
-    { value: "non-veg", label: "Non-Vegetarian" },
-    { value: "spicy", label: "Spicy" },
-    { value: "specialty", label: "Specialty" },
-  ];
+      setPizzas(pizzasData);
+      setAvailableCategories(categoriesData);
+      setAvailableToppings(toppingsData);
+      setAvailableIngredients(ingredientsData);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleAddNew = () => {
     setEditingPizza(null);
@@ -86,62 +139,106 @@ const Pizzas = () => {
     setIsDialogOpen(true);
   };
 
-  const handleEdit = (pizza: PizzaItem) => {
+  const handleEdit = (pizza: Pizza) => {
     setEditingPizza(pizza);
     setName(pizza.name);
-    
-    // Set size prices
-    const smallSize = pizza.sizes.find(s => s.size === 'small');
-    const mediumSize = pizza.sizes.find(s => s.size === 'medium');
-    const largeSize = pizza.sizes.find(s => s.size === 'large');
-    
-    setSmallPrice(smallSize ? smallSize.price.toString() : "");
-    setMediumPrice(mediumSize ? mediumSize.price.toString() : "");
-    setLargePrice(largeSize ? largeSize.price.toString() : "");
-    
-    setCategory(pizza.category);
-    setImageUrl(pizza.imageUrl);
-    setSelectedToppings(pizza.toppings);
-    setSelectedIngredients(pizza.ingredients);
+    setDescription(pizza.description || "");
+    setSmallPrice(pizza.sizes.SMALL.toString());
+    setMediumPrice(pizza.sizes.MEDIUM.toString());
+    setLargePrice(pizza.sizes.LARGE.toString());
+    setCategory(pizza.categoryId);
+    setImageUrl(pizza.imageUrl || "");
+
+    setSelectedToppings(
+      pizza.defaultToppings.map((t) => ({
+        id: t.topping.id,
+        name: t.topping.name,
+        price: parseFloat(t.topping.price.toString()),
+        quantity: t.quantity,
+      }))
+    );
+
+    setSelectedIngredients(
+      pizza.defaultIngredients.map((i) => ({
+        id: i.ingredient.id,
+        name: i.ingredient.name,
+        price: parseFloat(i.ingredient.price.toString()),
+        quantity: i.quantity,
+      }))
+    );
+
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (pizza: PizzaItem) => {
-    setPizzas(pizzas.filter(p => p.id !== pizza.id));
-    toast({
-      title: "Pizza Deleted",
-      description: `${pizza.name} has been deleted successfully.`
-    });
+  const handleDelete = async (pizza: Pizza) => {
+    try {
+      await pizzaService.deletePizza(pizza.id);
+      setPizzas(pizzas.filter((p) => p.id !== pizza.id));
+      toast({
+        title: "Success",
+        description: "Pizza deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete pizza",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleAddTopping = (topping: PizzaTopping) => {
-    const existingTopping = selectedToppings.find(t => t.id === topping.id);
+  const handleAddTopping = (topping: Topping) => {
+    const existingTopping = selectedToppings.find((t) => t.id === topping.id);
     if (existingTopping) {
-      setSelectedToppings(selectedToppings.map(t =>
-        t.id === topping.id ? { ...t, quantity: t.quantity + 1 } : t
-      ));
+      setSelectedToppings(
+        selectedToppings.map((t) =>
+          t.id === topping.id ? { ...t, quantity: t.quantity + 1 } : t
+        )
+      );
     } else {
-      setSelectedToppings([...selectedToppings, { ...topping, quantity: 1 }]);
+      setSelectedToppings([
+        ...selectedToppings,
+        {
+          id: topping.id,
+          name: topping.name,
+          price: parseFloat(topping.price.toString()),
+          quantity: 1,
+        },
+      ]);
     }
   };
 
-  const handleAddIngredient = (ingredient: PizzaIngredient) => {
-    const existingIngredient = selectedIngredients.find(i => i.id === ingredient.id);
+  const handleAddIngredient = (ingredient: Ingredient) => {
+    const existingIngredient = selectedIngredients.find(
+      (i) => i.id === ingredient.id
+    );
     if (existingIngredient) {
-      setSelectedIngredients(selectedIngredients.map(i =>
-        i.id === ingredient.id ? { ...i, quantity: i.quantity + 1 } : i
-      ));
+      setSelectedIngredients(
+        selectedIngredients.map((i) =>
+          i.id === ingredient.id ? { ...i, quantity: i.quantity + 1 } : i
+        )
+      );
     } else {
-      setSelectedIngredients([...selectedIngredients, { ...ingredient, quantity: 1 }]);
+      setSelectedIngredients([
+        ...selectedIngredients,
+        {
+          id: ingredient.id,
+          name: ingredient.name,
+          price: parseFloat(ingredient.price.toString()),
+          quantity: 1,
+        },
+      ]);
     }
   };
 
-  const handleRemoveTopping = (toppingId: number) => {
-    setSelectedToppings(selectedToppings.filter(t => t.id !== toppingId));
+  const handleRemoveTopping = (toppingId: string) => {
+    setSelectedToppings(selectedToppings.filter((t) => t.id !== toppingId));
   };
 
-  const handleRemoveIngredient = (ingredientId: number) => {
-    setSelectedIngredients(selectedIngredients.filter(i => i.id !== ingredientId));
+  const handleRemoveIngredient = (ingredientId: string) => {
+    setSelectedIngredients(
+      selectedIngredients.filter((i) => i.id !== ingredientId)
+    );
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,72 +252,106 @@ const Pizzas = () => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name || !smallPrice || !mediumPrice || !largePrice || !category) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    const small = parseFloat(smallPrice);
-    const medium = parseFloat(mediumPrice);
-    const large = parseFloat(largePrice);
-    
-    if (isNaN(small) || isNaN(medium) || isNaN(large)) {
+    const sizes = {
+      SMALL: parseFloat(smallPrice),
+      MEDIUM: parseFloat(mediumPrice),
+      LARGE: parseFloat(largePrice),
+    };
+
+    const pizzaData = {
+      name,
+      description,
+      imageUrl,
+      category,
+      sizes,
+      toppings: selectedToppings.map((t) => ({
+        id: t.id,
+        quantity: t.quantity,
+      })),
+      ingredients: selectedIngredients.map((i) => ({
+        id: i.id,
+        quantity: i.quantity,
+      })),
+    };
+
+    try {
+      if (editingPizza) {
+        await pizzaService.updatePizza(editingPizza.id, pizzaData);
+        toast({
+          title: "Success",
+          description: "Pizza updated successfully",
+        });
+      } else {
+        await pizzaService.addPizza(pizzaData);
+        toast({
+          title: "Success",
+          description: "Pizza added successfully",
+        });
+      }
+      fetchInitialData(); // Refresh the list
+      setIsDialogOpen(false);
+    } catch (error) {
       toast({
         title: "Error",
-        description: "Please enter valid prices",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const sizes: PizzaSize[] = [
-      { size: 'small', price: small },
-      { size: 'medium', price: medium },
-      { size: 'large', price: large }
-    ];
-
-    if (editingPizza) {
-      setPizzas(pizzas.map(p =>
-        p.id === editingPizza.id
-          ? {
-              ...p,
-              name,
-              sizes,
-              category,
-              imageUrl,
-              toppings: selectedToppings,
-              ingredients: selectedIngredients,
-            }
-          : p
-      ));
-      toast({
-        title: "Pizza Updated",
-        description: `${name} has been updated successfully.`
-      });
-    } else {
-      const newPizza: PizzaItem = {
-        id: Math.max(0, ...pizzas.map(p => p.id)) + 1,
-        name,
-        sizes,
-        category,
-        imageUrl,
-        toppings: selectedToppings,
-        ingredients: selectedIngredients,
-      };
-      setPizzas([...pizzas, newPizza]);
-      toast({
-        title: "Pizza Added",
-        description: `${name} has been added successfully.`
+        description: "Failed to save pizza",
+        variant: "destructive",
       });
     }
-
-    setIsDialogOpen(false);
   };
+
+  const incrementToppingQuantity = (toppingId: string) => {
+    setSelectedToppings(
+      selectedToppings.map((topping) =>
+        topping.id === toppingId
+          ? { ...topping, quantity: topping.quantity + 1 }
+          : topping
+      )
+    );
+  };
+
+  const decrementToppingQuantity = (toppingId: string) => {
+    setSelectedToppings(
+      selectedToppings.map((topping) =>
+        topping.id === toppingId && topping.quantity > 1
+          ? { ...topping, quantity: topping.quantity - 1 }
+          : topping
+      )
+    );
+  };
+
+  const incrementIngredientQuantity = (ingredientId: string) => {
+    setSelectedIngredients(
+      selectedIngredients.map((ingredient) =>
+        ingredient.id === ingredientId
+          ? { ...ingredient, quantity: ingredient.quantity + 1 }
+          : ingredient
+      )
+    );
+  };
+
+  const decrementIngredientQuantity = (ingredientId: string) => {
+    setSelectedIngredients(
+      selectedIngredients.map((ingredient) =>
+        ingredient.id === ingredientId && ingredient.quantity > 1
+          ? { ...ingredient, quantity: ingredient.quantity - 1 }
+          : ingredient
+      )
+    );
+  };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -249,17 +380,27 @@ const Pizzas = () => {
               {pizzas.map((pizza) => (
                 <TableRow key={pizza.id}>
                   <TableCell>
-                    <img 
-                      src={pizza.imageUrl || "/placeholder.svg"} 
+                    <img
+                      src={pizza.imageUrl || "/placeholder.svg"}
                       alt={pizza.name}
                       className="w-12 h-12 object-cover rounded-md"
                     />
                   </TableCell>
                   <TableCell>{pizza.name}</TableCell>
-                  <TableCell>{pizza.category}</TableCell>
-                  <TableCell>£{pizza.sizes.find(s => s.size === 'small')?.price.toFixed(2) || '0.00'}</TableCell>
-                  <TableCell>£{pizza.sizes.find(s => s.size === 'medium')?.price.toFixed(2) || '0.00'}</TableCell>
-                  <TableCell>£{pizza.sizes.find(s => s.size === 'large')?.price.toFixed(2) || '0.00'}</TableCell>
+                  <TableCell>
+                    {availableCategories.find(
+                      (cat) => cat.id === pizza.categoryId
+                    )?.name || pizza.categoryId}
+                  </TableCell>
+                  <TableCell>
+                    £{pizza.sizes.SMALL.toFixed(2) || "0.00"}
+                  </TableCell>
+                  <TableCell>
+                    £{pizza.sizes.MEDIUM.toFixed(2) || "0.00"}
+                  </TableCell>
+                  <TableCell>
+                    £{pizza.sizes.LARGE.toFixed(2) || "0.00"}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
@@ -303,40 +444,40 @@ const Pizzas = () => {
                   placeholder="e.g., Margherita"
                 />
               </div>
-              
+
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="small-price">Small Size Price (£)</Label>
                   <Input
                     id="small-price"
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="0"
                     value={smallPrice}
                     onChange={(e) => setSmallPrice(e.target.value)}
                     placeholder="e.g., 9.99"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="medium-price">Medium Size Price (£)</Label>
                   <Input
                     id="medium-price"
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="0"
                     value={mediumPrice}
                     onChange={(e) => setMediumPrice(e.target.value)}
                     placeholder="e.g., 12.99"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="large-price">Large Size Price (£)</Label>
                   <Input
                     id="large-price"
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="0"
                     value={largePrice}
                     onChange={(e) => setLargePrice(e.target.value)}
@@ -344,7 +485,7 @@ const Pizzas = () => {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
                 <Select value={category} onValueChange={setCategory}>
@@ -352,9 +493,9 @@ const Pizzas = () => {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
+                    {availableCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -396,15 +537,42 @@ const Pizzas = () => {
                 </div>
                 <div className="mt-2">
                   {selectedToppings.map((topping) => (
-                    <div key={topping.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md mb-2">
-                      <span>{topping.name} (x{topping.quantity})</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveTopping(topping.id)}
-                      >
-                        <X className="h-4 w-4 text-red-500" />
-                      </Button>
+                    <div
+                      key={topping.id}
+                      className="flex items-center justify-between p-2 bg-gray-50 rounded-md mb-2"
+                    >
+                      <span>{topping.name}</span>
+                      <div className="flex items-center">
+                        <div className="flex items-center mr-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => decrementToppingQuantity(topping.id)}
+                            disabled={topping.quantity <= 1}
+                          >
+                            <ArrowDown className="h-4 w-4 text-gray-500" />
+                          </Button>
+                          <span className="mx-2 min-w-[24px] text-center">
+                            {topping.quantity}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => incrementToppingQuantity(topping.id)}
+                          >
+                            <ArrowUp className="h-4 w-4 text-gray-500" />
+                          </Button>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveTopping(topping.id)}
+                        >
+                          <X className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -427,15 +595,46 @@ const Pizzas = () => {
                 </div>
                 <div className="mt-2">
                   {selectedIngredients.map((ingredient) => (
-                    <div key={ingredient.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md mb-2">
-                      <span>{ingredient.name} (x{ingredient.quantity})</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveIngredient(ingredient.id)}
-                      >
-                        <X className="h-4 w-4 text-red-500" />
-                      </Button>
+                    <div
+                      key={ingredient.id}
+                      className="flex items-center justify-between p-2 bg-gray-50 rounded-md mb-2"
+                    >
+                      <span>{ingredient.name}</span>
+                      <div className="flex items-center">
+                        <div className="flex items-center mr-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() =>
+                              decrementIngredientQuantity(ingredient.id)
+                            }
+                            disabled={ingredient.quantity <= 1}
+                          >
+                            <ArrowDown className="h-4 w-4 text-gray-500" />
+                          </Button>
+                          <span className="mx-2 min-w-[24px] text-center">
+                            {ingredient.quantity}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() =>
+                              incrementIngredientQuantity(ingredient.id)
+                            }
+                          >
+                            <ArrowUp className="h-4 w-4 text-gray-500" />
+                          </Button>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveIngredient(ingredient.id)}
+                        >
+                          <X className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -1,38 +1,52 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Edit, Trash } from "lucide-react";
-import { 
-  Table, 
-  TableBody, 
-  TableCaption, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-
-type Category = {
-  id: string;
-  name: string;
-  description: string;
-};
+import { Category, categoryService } from "@/services/categoryService";
 
 const Categories = () => {
-  const [categories, setCategories] = useState<Category[]>([
-    { id: "1", name: "Pizza", description: "Traditional pizza categories" },
-    { id: "2", name: "Sides", description: "Side dishes and appetizers" },
-    { id: "3", name: "Drinks", description: "Beverages and refreshments" },
-    { id: "4", name: "Desserts", description: "Sweet treats and desserts" },
-  ]);
-
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({ name: "", description: "" });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const data = await categoryService.getCategories();
+      setCategories(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch categories",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleOpenDialog = (category?: Category) => {
     if (category) {
@@ -54,7 +68,7 @@ const Categories = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.name.trim()) {
       toast({
         title: "Error",
@@ -64,50 +78,77 @@ const Categories = () => {
       return;
     }
 
-    if (currentCategory) {
-      // Edit existing category
-      setCategories(
-        categories.map((cat) =>
-          cat.id === currentCategory.id
-            ? { ...cat, name: formData.name, description: formData.description }
-            : cat
-        )
-      );
+    try {
+      if (currentCategory) {
+        // Edit existing category
+        const updatedCategory = await categoryService.updateCategory({
+          ...currentCategory,
+          name: formData.name,
+          description: formData.description,
+        });
+        setCategories(
+          categories.map((cat) =>
+            cat.id === currentCategory.id ? updatedCategory : cat
+          )
+        );
+        toast({
+          title: "Success",
+          description: "Category updated successfully",
+        });
+      } else {
+        // Add new category
+        const newCategory = await categoryService.addCategory({
+          name: formData.name,
+          description: formData.description,
+        });
+        setCategories([...categories, newCategory]);
+        toast({
+          title: "Success",
+          description: "Category added successfully",
+        });
+      }
+      setIsDialogOpen(false);
+    } catch (error) {
       toast({
-        title: "Success",
-        description: "Category updated successfully",
-      });
-    } else {
-      // Add new category
-      const newCategory = {
-        id: `${Date.now()}`,
-        name: formData.name,
-        description: formData.description,
-      };
-      setCategories([...categories, newCategory]);
-      toast({
-        title: "Success",
-        description: "Category added successfully",
+        title: "Error",
+        description: "Failed to save category",
+        variant: "destructive",
       });
     }
-    setIsDialogOpen(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (currentCategory) {
-      setCategories(categories.filter((cat) => cat.id !== currentCategory.id));
-      toast({
-        title: "Success",
-        description: "Category deleted successfully",
-      });
-      setIsDeleteDialogOpen(false);
+      try {
+        await categoryService.deleteCategory(currentCategory.id);
+        setCategories(
+          categories.filter((cat) => cat.id !== currentCategory.id)
+        );
+        toast({
+          title: "Success",
+          description: "Category deleted successfully",
+        });
+        setIsDeleteDialogOpen(false);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete category",
+          variant: "destructive",
+        });
+      }
     }
   };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Category Management</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Category Management
+        </h1>
         <Button onClick={() => handleOpenDialog()}>
           <Plus className="h-4 w-4 mr-2" />
           Add Category
@@ -163,7 +204,9 @@ const Categories = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium">Name</label>
+              <label htmlFor="name" className="text-sm font-medium">
+                Name
+              </label>
               <Input
                 id="name"
                 name="name"
@@ -173,7 +216,9 @@ const Categories = () => {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="description" className="text-sm font-medium">Description</label>
+              <label htmlFor="description" className="text-sm font-medium">
+                Description
+              </label>
               <Input
                 id="description"
                 name="description"
@@ -201,11 +246,14 @@ const Categories = () => {
             <DialogTitle>Confirm Deletion</DialogTitle>
           </DialogHeader>
           <p>
-            Are you sure you want to delete the category "{currentCategory?.name}"? 
-            This action cannot be undone.
+            Are you sure you want to delete the category "
+            {currentCategory?.name}"? This action cannot be undone.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete}>

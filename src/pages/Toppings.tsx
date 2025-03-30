@@ -1,32 +1,59 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Edit, Plus, Pizza, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import {
+  Edit,
+  Plus,
+  Pizza,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-
-interface Topping {
-  id: number;
-  name: string;
-  price: number;
-  isActive: boolean;
-}
+import { Topping, toppingService } from "@/services/toppingService";
 
 const Toppings = () => {
   const { toast } = useToast();
-  const [toppings, setToppings] = useState<Topping[]>([
-    { id: 1, name: "Pepperoni", price: 1.99, isActive: true },
-    { id: 2, name: "Mushrooms", price: 1.50, isActive: true },
-    { id: 3, name: "Extra Cheese", price: 2.00, isActive: false }
-  ]);
-
+  const [toppings, setToppings] = useState<Topping[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTopping, setEditingTopping] = useState<Topping | null>(null);
   const [toppingName, setToppingName] = useState("");
   const [toppingPrice, setToppingPrice] = useState("");
+
+  useEffect(() => {
+    fetchToppings();
+  }, []);
+
+  const fetchToppings = async () => {
+    try {
+      const data = await toppingService.getToppings();
+      setToppings(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch toppings",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleAddNew = () => {
     setEditingTopping(null);
@@ -42,32 +69,53 @@ const Toppings = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (topping: Topping) => {
-    setToppings(toppings.filter(t => t.id !== topping.id));
-    toast({
-      title: "Topping Deleted",
-      description: `${topping.name} has been deleted successfully.`
-    });
+  const handleDelete = async (topping: Topping) => {
+    try {
+      await toppingService.deleteTopping(topping.id);
+      setToppings(toppings.filter((t) => t.id !== topping.id));
+      toast({
+        title: "Topping Deleted",
+        description: `${topping.name} has been deleted successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete topping",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleToggleActive = (topping: Topping) => {
-    setToppings(toppings.map(t => 
-      t.id === topping.id 
-        ? { ...t, isActive: !t.isActive }
-        : t
-    ));
-    toast({
-      title: topping.isActive ? "Topping Disabled" : "Topping Enabled",
-      description: `${topping.name} has been ${topping.isActive ? "disabled" : "enabled"}.`
-    });
+  const handleToggleActive = async (topping: Topping) => {
+    try {
+      const updatedTopping = await toppingService.updateToppingStatus(
+        topping.id,
+        !topping.status
+      );
+      setToppings(
+        toppings.map((t) => (t.id === topping.id ? updatedTopping : t))
+      );
+      toast({
+        title: topping.status ? "Topping Disabled" : "Topping Enabled",
+        description: `${topping.name} has been ${
+          topping.status ? "disabled" : "enabled"
+        }.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update topping status",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!toppingName || !toppingPrice) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -77,39 +125,56 @@ const Toppings = () => {
       toast({
         title: "Error",
         description: "Please enter a valid price",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    if (editingTopping) {
-      // Update existing topping
-      setToppings(toppings.map(t => 
-        t.id === editingTopping.id 
-          ? { ...t, name: toppingName, price: price }
-          : t
-      ));
+    try {
+      if (editingTopping) {
+        // Update existing topping
+        const updatedTopping = await toppingService.updateTopping({
+          id: editingTopping.id,
+          name: toppingName,
+          price: price,
+        });
+        setToppings(
+          toppings.map((t) => (t.id === editingTopping.id ? updatedTopping : t))
+        );
+        toast({
+          title: "Topping Updated",
+          description: `${toppingName} has been updated successfully.`,
+        });
+      } else {
+        // Add new topping
+        const newTopping = await toppingService.addTopping({
+          name: toppingName,
+          price: price,
+        });
+        setToppings([...toppings, newTopping]);
+        toast({
+          title: "Topping Added",
+          description: `${toppingName} has been added successfully.`,
+        });
+      }
+      setIsDialogOpen(false);
+    } catch (error) {
       toast({
-        title: "Topping Updated",
-        description: `${toppingName} has been updated successfully.`
-      });
-    } else {
-      // Add new topping
-      const newTopping: Topping = {
-        id: Math.max(...toppings.map(t => t.id)) + 1,
-        name: toppingName,
-        price: price,
-        isActive: true
-      };
-      setToppings([...toppings, newTopping]);
-      toast({
-        title: "Topping Added",
-        description: `${toppingName} has been added successfully.`
+        title: "Error",
+        description: "Failed to save topping",
+        variant: "destructive",
       });
     }
-
-    setIsDialogOpen(false);
   };
+
+  const formatPrice = (price: string | number): string => {
+    const numPrice = typeof price === "string" ? parseFloat(price) : price;
+    return numPrice.toFixed(2);
+  };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -140,14 +205,14 @@ const Toppings = () => {
                       <span>{topping.name}</span>
                     </div>
                   </TableCell>
-                  <TableCell>£{topping.price.toFixed(2)}</TableCell>
+                  <TableCell>£{formatPrice(topping.price)}</TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleToggleActive(topping)}
                     >
-                      {topping.isActive ? (
+                      {topping.status ? (
                         <ToggleRight className="h-4 w-4 text-green-500" />
                       ) : (
                         <ToggleLeft className="h-4 w-4 text-gray-400" />
