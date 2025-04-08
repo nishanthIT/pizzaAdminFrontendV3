@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Edit, Trash2, Save } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,23 +20,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ComboItemSelector } from "@/components/combos/ComboItemSelector";
-
-type PizzaSize = "small" | "medium" | "large";
+import {
+  comboService,
+  PizzaSize,
+  ComboFormData,
+  BackendCombo,
+} from "@/services/comboService";
+import { API_URL } from "@/services/config";
 
 type ComboItem = {
   id: string;
   name: string;
   price: number;
   quantity: number;
-  size?: PizzaSize;
+  size: PizzaSize;
 };
 
 type Combo = {
@@ -71,119 +69,99 @@ const Combos = () => {
     discount: 0,
   });
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setNewCombo((prev) => ({ ...prev, image: file }));
-    }
-  };
+  useEffect(() => {
+    loadCombos();
+  }, []);
 
-  const calculateTotalPrice = (items: ComboItem[]) => {
-    return items.reduce((total, item) => total + item.price * item.quantity, 0);
-  };
-
-  const handleAddCombo = () => {
-    if (
-      !newCombo.name ||
-      (!newCombo.image && !newCombo.imageUrl) ||
-      newCombo.items.length === 0 ||
-      newCombo.discount < 0
-    ) {
+  const loadCombos = async () => {
+    try {
+      const data = await comboService.getAllCombos();
+      setCombos(
+        data.map((combo: BackendCombo) => ({
+          id: combo.id,
+          name: combo.name,
+          description: combo.description,
+          image: `${API_URL}${combo.imageUrl}`,
+          items: combo.pizzas.map((p) => ({
+            id: p.pizza.id,
+            name: p.pizza.name,
+            price: p.pizza.sizes[p.size],
+            quantity: p.quantity,
+            size: p.size as PizzaSize,
+          })),
+          discount: Number(combo.discount),
+          totalPrice: Number(combo.price) / (1 - Number(combo.discount) / 100),
+          finalPrice: Number(combo.price),
+        }))
+      );
+    } catch (error) {
       toast({
-        title: "Validation Error",
-        description:
-          "Please fill in all required fields: name, image, at least one item, and valid discount",
+        title: "Error",
+        description: "Failed to load combos",
         variant: "destructive",
       });
-      return;
     }
+  };
 
-    const totalPrice = calculateTotalPrice(newCombo.items);
-    const finalPrice = totalPrice - (totalPrice * newCombo.discount) / 100;
+  const handleAddCombo = async () => {
+    try {
+      if (!newCombo.name || !newCombo.image || newCombo.items.length === 0) {
+        toast({
+          title: "Error",
+          description: "Please fill in all required fields",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (isEditing && editingComboId) {
-      // Update existing combo
-      setCombos((prev) =>
-        prev.map((combo) => {
-          if (combo.id === editingComboId) {
-            return {
-              ...combo,
-              name: newCombo.name,
-              description: newCombo.description,
-              image: newCombo.image
-                ? URL.createObjectURL(newCombo.image)
-                : newCombo.imageUrl || combo.image,
-              items: newCombo.items,
-              discount: newCombo.discount,
-              totalPrice,
-              finalPrice,
-            };
-          }
-          return combo;
-        })
-      );
-      toast({ title: "Success", description: "Combo updated successfully" });
-    } else {
-      // Add new combo
-      const combo: Combo = {
-        id: crypto.randomUUID(),
+      const comboData: ComboFormData = {
         name: newCombo.name,
         description: newCombo.description,
-        image: newCombo.image ? URL.createObjectURL(newCombo.image) : "",
-        items: newCombo.items,
         discount: newCombo.discount,
-        totalPrice,
-        finalPrice,
+        pizzas: newCombo.items.map((item) => ({
+          pizzaId: item.id,
+          quantity: item.quantity,
+          size: item.size,
+        })),
       };
 
-      setCombos((prev) => [...prev, combo]);
-      toast({ title: "Success", description: "Combo created successfully" });
+      console.log("Sending combo data:", comboData);
+
+      if (isEditing && editingComboId) {
+        await comboService.editCombo(editingComboId, comboData, newCombo.image);
+      } else {
+        await comboService.addCombo(comboData, newCombo.image);
+      }
+
+      await loadCombos();
+      toast({
+        title: "Success",
+        description: isEditing
+          ? "Combo updated successfully"
+          : "Combo created successfully",
+      });
+      resetComboForm();
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Error saving combo:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save combo",
+        variant: "destructive",
+      });
     }
-
-    // Reset form and close dialog
-    resetComboForm();
-    setIsDialogOpen(false);
-  };
-
-  const handleEditCombo = (combo: Combo) => {
-    setIsEditing(true);
-    setEditingComboId(combo.id);
-    setNewCombo({
-      name: combo.name,
-      description: combo.description,
-      image: null,
-      imageUrl: combo.image,
-      items: combo.items,
-      discount: combo.discount,
-    });
-    setIsDialogOpen(true);
-  };
-
-  const resetComboForm = () => {
-    setNewCombo({
-      name: "",
-      description: "",
-      image: null,
-      items: [],
-      discount: 0,
-    });
-    setIsEditing(false);
-    setEditingComboId(null);
-  };
-
-  const handleDeleteCombo = (id: string) => {
-    setCombos((prev) => prev.filter((combo) => combo.id !== id));
-    toast({ title: "Success", description: "Combo deleted successfully" });
   };
 
   const handleAddItem = (
-    item: Omit<ComboItem, "id" | "size">,
-    size?: PizzaSize
+    item: { id: string; name: string; price: number; quantity: number },
+    size: PizzaSize
   ) => {
     const newItem = {
-      ...item,
-      id: crypto.randomUUID(),
-      size,
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      size: size,
     };
 
     setNewCombo((prev) => ({
@@ -217,19 +195,61 @@ const Combos = () => {
     }));
   };
 
-  // Close dialog and reset form
-  const handleDialogChange = (open: boolean) => {
-    if (!open) {
-      resetComboForm();
+  const handleEditCombo = (combo: Combo) => {
+    setIsEditing(true);
+    setEditingComboId(combo.id);
+    setNewCombo({
+      name: combo.name,
+      description: combo.description,
+      image: null,
+      imageUrl: combo.image,
+      items: combo.items,
+      discount: combo.discount,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteCombo = async (id: string) => {
+    try {
+      await comboService.deleteCombo(id);
+      await loadCombos();
+      toast({
+        title: "Success",
+        description: "Combo deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete combo",
+        variant: "destructive",
+      });
     }
-    setIsDialogOpen(open);
+  };
+
+  const resetComboForm = () => {
+    setNewCombo({
+      name: "",
+      description: "",
+      image: null,
+      items: [],
+      discount: 0,
+    });
+    setIsEditing(false);
+    setEditingComboId(null);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNewCombo((prev) => ({ ...prev, image: file }));
+    }
   };
 
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Combos & Offers</h1>
-        <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>Add New Combo</Button>
           </DialogTrigger>
@@ -259,7 +279,6 @@ const Combos = () => {
                 <Label htmlFor="description">Combo Description</Label>
                 <Textarea
                   id="description"
-                  placeholder="Example: Two large same pizzas with drinks"
                   value={newCombo.description}
                   onChange={(e) =>
                     setNewCombo((prev) => ({
@@ -309,9 +328,9 @@ const Combos = () => {
               <div className="space-y-4">
                 <Label>Add Items to Combo</Label>
                 <ComboItemSelector
-                  onAddItem={(item) => handleAddItem(item)}
+                  onAddItem={(item) => handleAddItem(item, "MEDIUM")}
                   showSizeSelector={true}
-                  onAddItemWithSize={(item, size) => handleAddItem(item, size)}
+                  onAddItemWithSize={handleAddItem}
                 />
                 <div className="space-y-2">
                   {newCombo.items.map((item) => (
@@ -321,33 +340,23 @@ const Combos = () => {
                     >
                       <div className="flex flex-col">
                         <span className="font-medium">{item.name}</span>
-                        {item.size && (
-                          <span className="text-sm text-gray-500">
-                            Size:{" "}
-                            {item.size.charAt(0).toUpperCase() +
-                              item.size.slice(1)}
-                          </span>
-                        )}
+                        <span className="text-sm text-gray-500">
+                          Size: {item.size}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span>Qty: {item.quantity}</span>
-                        {item.name.toLowerCase().includes("pizza") && (
-                          <Select
-                            value={item.size || "medium"}
-                            onValueChange={(value) =>
-                              handleSizeChange(item.id, value as PizzaSize)
-                            }
-                          >
-                            <SelectTrigger className="w-24">
-                              <SelectValue placeholder="Size" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="small">Small</SelectItem>
-                              <SelectItem value="medium">Medium</SelectItem>
-                              <SelectItem value="large">Large</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
+                        <Input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            handleQuantityChange(
+                              item.id,
+                              Number(e.target.value)
+                            )
+                          }
+                          className="w-20"
+                        />
                         <Button
                           variant="destructive"
                           size="icon"
@@ -378,13 +387,11 @@ const Combos = () => {
                 className="w-full h-48 object-cover rounded-lg"
               />
               <CardTitle>{combo.name}</CardTitle>
-              <CardDescription>
-                {combo.description && (
-                  <p className="mb-2">{combo.description}</p>
-                )}
+              <CardDescription>{combo.description}</CardDescription>
+              <div className="text-sm text-muted-foreground">
                 {combo.discount}% off - Final Price: $
                 {combo.finalPrice.toFixed(2)}
-              </CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -392,8 +399,7 @@ const Combos = () => {
                 {combo.items.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
                     <span>
-                      {item.name} {item.size && `(${item.size})`} x
-                      {item.quantity}
+                      {item.name} ({item.size}) x {item.quantity}
                     </span>
                     <span>${(item.price * item.quantity).toFixed(2)}</span>
                   </div>
@@ -410,7 +416,7 @@ const Combos = () => {
                   onClick={() => handleEditCombo(combo)}
                 >
                   <Edit className="mr-2 h-4 w-4" />
-                  Edit Combo
+                  Edit
                 </Button>
                 <Button
                   variant="destructive"

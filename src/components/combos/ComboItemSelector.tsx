@@ -9,29 +9,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-
-type PizzaSize = "small" | "medium" | "large";
-
-type MenuItem = {
-  id: string;
-  name: string;
-  price: number;
-};
-
-// Sample menu items (you should replace this with your actual data)
-const menuItems: MenuItem[] = [
-  { id: "1", name: "Margherita Pizza", price: 12.99 },
-  { id: "2", name: "Pepperoni Pizza", price: 14.99 },
-  { id: "3", name: "Veggie Supreme", price: 13.99 },
-  { id: "4", name: "Chicken Wings", price: 9.99 },
-  { id: "5", name: "Garlic Bread", price: 4.99 },
-];
+import { comboService, PizzaSize, Pizza } from "@/services/comboService";
+import { useToast } from "@/hooks/use-toast";
 
 type ComboItemSelectorProps = {
-  onAddItem: (item: { name: string; price: number; quantity: number }) => void;
+  onAddItem: (item: {
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+  }) => void;
   showSizeSelector?: boolean;
   onAddItemWithSize?: (
-    item: { name: string; price: number; quantity: number },
+    item: { id: string; name: string; price: number; quantity: number },
     size: PizzaSize
   ) => void;
   initialItem?: { id: string; quantity: number; size?: PizzaSize };
@@ -43,67 +33,83 @@ export function ComboItemSelector({
   onAddItemWithSize,
   initialItem,
 }: ComboItemSelectorProps) {
+  const { toast } = useToast();
   const [selectedItem, setSelectedItem] = useState<string>("");
   const [quantity, setQuantity] = useState<number>(1);
-  const [selectedSize, setSelectedSize] = useState<PizzaSize>("medium");
+  const [selectedSize, setSelectedSize] = useState<PizzaSize>("MEDIUM");
+  const [pizzas, setPizzas] = useState<Pizza[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize with initial values if provided (for editing)
+  useEffect(() => {
+    loadPizzas();
+  }, []);
+
   useEffect(() => {
     if (initialItem) {
       setSelectedItem(initialItem.id);
       setQuantity(initialItem.quantity);
       if (initialItem.size) {
-        setSelectedSize(initialItem.size);
+        setSelectedSize(initialItem.size as PizzaSize);
       }
     }
   }, [initialItem]);
 
-  const handleAddItem = () => {
-    const item = menuItems.find((item) => item.id === selectedItem);
-    if (!item) return;
+  const loadPizzas = async () => {
+    try {
+      setIsLoading(true);
+      const response = await comboService.getAllPizzas();
+      if (response && response.pizzas && Array.isArray(response.pizzas)) {
+        setPizzas(response.pizzas);
+      } else {
+        console.error("Invalid response format:", response);
+        setPizzas([]);
+      }
+    } catch (error) {
+      console.error("Error loading pizzas:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load pizzas",
+        variant: "destructive",
+      });
+      setPizzas([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    // If it's a pizza and size selector is shown, use the size-specific handler
-    const isPizza = item.name.toLowerCase().includes("pizza");
-    if (isPizza && showSizeSelector && onAddItemWithSize) {
+  const handleAddItem = () => {
+    const pizza = pizzas.find((p) => p.id === selectedItem);
+    if (!pizza) return;
+
+    const price = pizza.sizes[selectedSize] || pizza.sizes["MEDIUM"];
+
+    if (showSizeSelector && onAddItemWithSize) {
       onAddItemWithSize(
         {
-          name: item.name,
-          price: adjustPriceBySize(item.price, selectedSize),
+          id: pizza.id,
+          name: pizza.name,
+          price: price,
           quantity: quantity,
         },
         selectedSize
       );
     } else {
-      // Otherwise use the regular handler
       onAddItem({
-        name: item.name,
-        price: item.price,
+        id: pizza.id,
+        name: pizza.name,
+        price: price,
         quantity: quantity,
       });
     }
 
     setSelectedItem("");
     setQuantity(1);
-  };
-
-  // Adjust price based on pizza size
-  const adjustPriceBySize = (basePrice: number, size: PizzaSize): number => {
-    switch (size) {
-      case "small":
-        return basePrice * 0.8;
-      case "large":
-        return basePrice * 1.2;
-      default:
-        return basePrice; // medium is the base price
-    }
+    setSelectedSize("MEDIUM");
   };
 
   // Check if current selection is a pizza
   const isPizzaSelected = selectedItem
-    ? menuItems
-        .find((item) => item.id === selectedItem)
-        ?.name.toLowerCase()
-        .includes("pizza")
+    ? pizzas.find((p) => p.id === selectedItem) !== undefined
     : false;
 
   return (
@@ -111,19 +117,20 @@ export function ComboItemSelector({
       <div className="flex-1 min-w-[200px]">
         <Select value={selectedItem} onValueChange={setSelectedItem}>
           <SelectTrigger>
-            <SelectValue placeholder="Select menu item" />
+            <SelectValue placeholder="Select pizza" />
           </SelectTrigger>
           <SelectContent>
-            {menuItems.map((item) => (
-              <SelectItem key={item.id} value={item.id}>
-                {item.name} - ${item.price}
-              </SelectItem>
-            ))}
+            {Array.isArray(pizzas) &&
+              pizzas.map((pizza) => (
+                <SelectItem key={pizza.id} value={pizza.id}>
+                  {pizza.name} - ${pizza.sizes["MEDIUM"]}
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
       </div>
 
-      {showSizeSelector && isPizzaSelected && (
+      {showSizeSelector && (
         <div className="w-24">
           <Select
             value={selectedSize}
@@ -133,9 +140,9 @@ export function ComboItemSelector({
               <SelectValue placeholder="Size" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="small">Small</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="large">Large</SelectItem>
+              <SelectItem value="SMALL">Small</SelectItem>
+              <SelectItem value="MEDIUM">Medium</SelectItem>
+              <SelectItem value="LARGE">Large</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -151,7 +158,7 @@ export function ComboItemSelector({
       </div>
       <Button
         onClick={handleAddItem}
-        disabled={!selectedItem}
+        disabled={!selectedItem || isLoading}
         variant="secondary"
         size="icon"
       >
