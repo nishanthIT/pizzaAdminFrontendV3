@@ -58,20 +58,65 @@ export interface Pizza {
 
 export const pizzaService = {
   getAllPizzas: async (): Promise<Pizza[]> => {
-    const response = await axios.get(`${API_URL}/getAllPizzas`);
-    return response.data.pizzas;
+    try {
+      const response = await axios.get(`${API_URL}/getAllPizzas`);
+      console.log("Raw API response:", response.data);
+      const pizzas = response.data.pizzas || [];
+
+      // Process pizzas to ensure sizes is always an object
+      const processedPizzas = pizzas.map((pizza) => ({
+        ...pizza,
+        sizes:
+          typeof pizza.sizes === "string"
+            ? JSON.parse(pizza.sizes)
+            : pizza.sizes,
+      }));
+
+      console.log("Processed pizzas:", processedPizzas);
+      return processedPizzas;
+    } catch (error) {
+      console.error("Error in getAllPizzas:", error);
+      throw error;
+    }
   },
 
   addPizza: async (pizza: {
     name: string;
     description?: string;
-    imageUrl?: string;
+    image?: File;
     category: string;
     sizes: Record<string, number>;
     toppings: Array<{ id: string; quantity: number }>;
     ingredients: Array<{ id: string; quantity: number }>;
   }): Promise<Pizza> => {
-    const response = await axios.post(`${API_URL}/addPizza`, pizza);
+    const formData = new FormData();
+
+    // Add text fields
+    formData.append("name", pizza.name);
+    if (pizza.description) formData.append("description", pizza.description);
+    formData.append("category", pizza.category);
+    formData.append("sizes", JSON.stringify(pizza.sizes));
+
+    // Add arrays as JSON strings
+    if (pizza.toppings && pizza.toppings.length > 0) {
+      formData.append("toppings", JSON.stringify(pizza.toppings));
+    }
+
+    if (pizza.ingredients && pizza.ingredients.length > 0) {
+      formData.append("ingredients", JSON.stringify(pizza.ingredients));
+    }
+
+    // Add image file if provided
+    if (pizza.image) {
+      formData.append("image", pizza.image);
+    }
+
+    const response = await axios.post(`${API_URL}/addPizza`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
     return response.data.pizza;
   },
 
@@ -80,17 +125,42 @@ export const pizzaService = {
     pizza: {
       name: string;
       description?: string;
-      imageUrl?: string;
+      image?: File;
       category: string;
       sizes: Record<string, number>;
       toppings: Array<{ id: string; quantity: number }>;
       ingredients: Array<{ id: string; quantity: number }>;
     }
   ): Promise<Pizza> => {
-    const response = await axios.put(`${API_URL}/updatePizza`, {
-      pizzaId,
-      ...pizza,
+    const formData = new FormData();
+
+    // Add text fields
+    formData.append("pizzaId", pizzaId);
+    formData.append("name", pizza.name);
+    if (pizza.description) formData.append("description", pizza.description);
+    formData.append("category", pizza.category);
+    formData.append("sizes", JSON.stringify(pizza.sizes));
+
+    // Add arrays as JSON strings
+    if (pizza.toppings && pizza.toppings.length > 0) {
+      formData.append("toppings", JSON.stringify(pizza.toppings));
+    }
+
+    if (pizza.ingredients && pizza.ingredients.length > 0) {
+      formData.append("ingredients", JSON.stringify(pizza.ingredients));
+    }
+
+    // Add image file if provided
+    if (pizza.image) {
+      formData.append("image", pizza.image);
+    }
+
+    const response = await axios.put(`${API_URL}/updatePizza`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     });
+
     return response.data.updatedPizza;
   },
 

@@ -24,6 +24,7 @@ import {
   X,
   ArrowUp,
   ArrowDown,
+  Pizza,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -38,6 +39,7 @@ import { Pizza, pizzaService } from "@/services/pizzaService";
 import { Category, categoryService } from "@/services/categoryService";
 import { Topping, toppingService } from "@/services/toppingService";
 import { Ingredient, ingredientService } from "@/services/ingredientService";
+import { API_URL } from "@/services/config";
 
 interface PizzaTopping {
   id: string;
@@ -96,6 +98,7 @@ const Pizzas = () => {
   const [selectedIngredients, setSelectedIngredients] = useState<
     PizzaIngredient[]
   >([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetchInitialData();
@@ -111,11 +114,15 @@ const Pizzas = () => {
           ingredientService.getIngredients(),
         ]);
 
+      console.log("Raw pizzas data:", pizzasData);
+      console.log("Sample pizza sizes:", pizzasData[0]?.sizes);
+
       setPizzas(pizzasData);
       setAvailableCategories(categoriesData);
       setAvailableToppings(toppingsData);
       setAvailableIngredients(ingredientsData);
     } catch (error) {
+      console.error("Error fetching data:", error);
       toast({
         title: "Error",
         description: "Failed to fetch data",
@@ -244,6 +251,7 @@ const Pizzas = () => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImageUrl(reader.result as string);
@@ -268,31 +276,43 @@ const Pizzas = () => {
       LARGE: parseFloat(largePrice),
     };
 
-    const pizzaData = {
-      name,
-      description,
-      imageUrl,
-      category,
-      sizes,
-      toppings: selectedToppings.map((t) => ({
-        id: t.id,
-        quantity: t.quantity,
-      })),
-      ingredients: selectedIngredients.map((i) => ({
-        id: i.id,
-        quantity: i.quantity,
-      })),
-    };
-
     try {
       if (editingPizza) {
-        await pizzaService.updatePizza(editingPizza.id, pizzaData);
+        await pizzaService.updatePizza(editingPizza.id, {
+          name,
+          description,
+          image: selectedFile || undefined,
+          category,
+          sizes,
+          toppings: selectedToppings.map((t) => ({
+            id: t.id,
+            quantity: t.quantity,
+          })),
+          ingredients: selectedIngredients.map((i) => ({
+            id: i.id,
+            quantity: i.quantity,
+          })),
+        });
         toast({
           title: "Success",
           description: "Pizza updated successfully",
         });
       } else {
-        await pizzaService.addPizza(pizzaData);
+        await pizzaService.addPizza({
+          name,
+          description,
+          image: selectedFile || undefined,
+          category,
+          sizes,
+          toppings: selectedToppings.map((t) => ({
+            id: t.id,
+            quantity: t.quantity,
+          })),
+          ingredients: selectedIngredients.map((i) => ({
+            id: i.id,
+            quantity: i.quantity,
+          })),
+        });
         toast({
           title: "Success",
           description: "Pizza added successfully",
@@ -381,8 +401,8 @@ const Pizzas = () => {
                 <TableRow key={pizza.id}>
                   <TableCell>
                     <img
-                      src={pizza.imageUrl || "/placeholder.svg"}
-                      alt={pizza.name}
+                      src={`${API_URL}/images/pizza-${pizza.id}.png`}
+                      alt="Preview"
                       className="w-12 h-12 object-cover rounded-md"
                     />
                   </TableCell>
@@ -393,13 +413,21 @@ const Pizzas = () => {
                     )?.name || pizza.categoryId}
                   </TableCell>
                   <TableCell>
-                    £{pizza.sizes.SMALL.toFixed(2) || "0.00"}
+                    {(() => {
+                      console.log(
+                        "Pizza sizes for",
+                        pizza.name,
+                        ":",
+                        pizza.sizes
+                      );
+                      return `£${Number(pizza.sizes?.SMALL || 0).toFixed(2)}`;
+                    })()}
                   </TableCell>
                   <TableCell>
-                    £{pizza.sizes.MEDIUM.toFixed(2) || "0.00"}
+                    £{Number(pizza.sizes?.MEDIUM || 0).toFixed(2)}
                   </TableCell>
                   <TableCell>
-                    £{pizza.sizes.LARGE.toFixed(2) || "0.00"}
+                    £{Number(pizza.sizes?.LARGE || 0).toFixed(2)}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -511,8 +539,8 @@ const Pizzas = () => {
                 />
                 {imageUrl && (
                   <img
-                    src={imageUrl}
-                    alt="Preview"
+                    src={`${API_URL}/images/pizza-${editingPizza?.id}.png`}
+                    alt={editingPizza?.name}
                     className="mt-2 w-full h-32 object-cover rounded-md"
                   />
                 )}

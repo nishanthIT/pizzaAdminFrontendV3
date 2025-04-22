@@ -57,7 +57,7 @@ const Combos = () => {
   const [newCombo, setNewCombo] = useState<{
     name: string;
     description: string;
-    image: File | null;
+    image: string;
     imageUrl?: string;
     items: ComboItem[];
     discount: number;
@@ -81,7 +81,7 @@ const Combos = () => {
           id: combo.id,
           name: combo.name,
           description: combo.description,
-          image: `${API_URL}${combo.imageUrl}`,
+          image: `${API_URL}/images/combo-${combo.id}.png`,
           items: combo.pizzas.map((p) => ({
             id: p.pizza.id,
             name: p.pizza.name,
@@ -336,7 +336,11 @@ const Combos = () => {
                   {newCombo.items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between p-2 border rounded"
+                      className="flex items-center justify-between p-2 bor
+                      
+                      
+                      
+                      r rounded"
                     >
                       <div className="flex flex-col">
                         <span className="font-medium">{item.name}</span>
@@ -382,7 +386,7 @@ const Combos = () => {
           <Card key={combo.id}>
             <CardHeader>
               <img
-                src={combo.image}
+                src={`${API_URL}/images/combo-${combo.id}.png`}
                 alt={combo.name}
                 className="w-full h-48 object-cover rounded-lg"
               />

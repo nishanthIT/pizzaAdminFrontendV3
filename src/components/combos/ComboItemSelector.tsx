@@ -88,7 +88,7 @@ export function ComboItemSelector({
         {
           id: pizza.id,
           name: pizza.name,
-          price: price,
+          price: pizza.price,
           quantity: quantity,
         },
         selectedSize
