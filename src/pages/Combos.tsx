@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +27,8 @@ import {
   ComboFormData,
   BackendCombo,
 } from "@/services/comboService";
-import { API_URL } from "@/services/config";
+import { API_IMG_URL, API_URL } from "@/services/config";
+import { Loading } from "@/components/ui/loading";
 
 type ComboItem = {
   id: string;
@@ -68,6 +69,7 @@ const Combos = () => {
     items: [],
     discount: 0,
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadCombos();
@@ -75,40 +77,48 @@ const Combos = () => {
 
   const loadCombos = async () => {
     try {
+      setIsLoading(true);
       const data = await comboService.getAllCombos();
-      setCombos(
-        data.map((combo: BackendCombo) => ({
-          id: combo.id,
-          name: combo.name,
-          description: combo.description,
-          image: `${API_URL}/images/combo-${combo.id}.png`,
-          items: combo.pizzas.map((p) => ({
-            id: p.pizza.id,
-            name: p.pizza.name,
-            price: p.pizza.sizes[p.size],
-            quantity: p.quantity,
-            size: p.size as PizzaSize,
-          })),
-          discount: Number(combo.discount),
-          totalPrice: Number(combo.price) / (1 - Number(combo.discount) / 100),
-          finalPrice: Number(combo.price),
-        }))
-      );
+      console.log("Received combo data:", data);
+
+      const processedCombos = data.map((combo: BackendCombo) => ({
+        id: combo.id,
+        name: combo.name,
+        description: combo.description,
+        image: combo.imageUrl, // Use imageUrl directly from the response
+        items: combo.pizzas.map((p) => ({
+          id: p.pizzaId, // Update to match the response structure
+          name: p.pizza?.name || "", // Add optional chaining
+          price: p.pizza?.sizes?.[p.size] || 0,
+          quantity: p.quantity,
+          size: p.size as PizzaSize,
+        })),
+        discount: Number(combo.discount),
+        totalPrice: Number(combo.price) / (1 - Number(combo.discount) / 100),
+        finalPrice: Number(combo.price),
+      }));
+
+      console.log("Processed combos:", processedCombos);
+      setCombos(processedCombos);
     } catch (error) {
+      console.error("Error loading combos:", error);
       toast({
         title: "Error",
         description: "Failed to load combos",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleAddCombo = async () => {
     try {
-      if (!newCombo.name || !newCombo.image || newCombo.items.length === 0) {
+      if (!newCombo.name || newCombo.items.length === 0) {
         toast({
           title: "Error",
-          description: "Please fill in all required fields",
+          description:
+            "Please fill in all required fields and add at least one item",
           variant: "destructive",
         });
         return;
@@ -125,11 +135,24 @@ const Combos = () => {
         })),
       };
 
-      console.log("Sending combo data:", comboData);
+      console.log("Sending combo data:", {
+        isEditing,
+        editingComboId,
+        comboData,
+        hasImage: !!newCombo.image,
+      });
 
       if (isEditing && editingComboId) {
-        await comboService.editCombo(editingComboId, comboData, newCombo.image);
+        const updatedCombo = await comboService.editCombo(
+          editingComboId,
+          comboData,
+          newCombo.image || undefined
+        );
+        console.log("Updated combo response:", updatedCombo);
       } else {
+        if (!newCombo.image) {
+          throw new Error("Image is required for new combos");
+        }
         await comboService.addCombo(comboData, newCombo.image);
       }
 
@@ -196,6 +219,7 @@ const Combos = () => {
   };
 
   const handleEditCombo = (combo: Combo) => {
+    console.log("Editing combo:", combo);
     setIsEditing(true);
     setEditingComboId(combo.id);
     setNewCombo({
@@ -203,8 +227,12 @@ const Combos = () => {
       description: combo.description,
       image: null,
       imageUrl: combo.image,
-      items: combo.items,
-      discount: combo.discount,
+      items: combo.items.map((item) => ({
+        ...item,
+        price: Number(item.price),
+        quantity: Number(item.quantity),
+      })),
+      discount: Number(combo.discount),
     });
     setIsDialogOpen(true);
   };
@@ -244,6 +272,10 @@ const Combos = () => {
       setNewCombo((prev) => ({ ...prev, image: file }));
     }
   };
+
+  if (isLoading) {
+    return <Loading message="Loading combos..." />;
+  }
 
   return (
     <div className="container mx-auto py-6">
@@ -386,7 +418,7 @@ const Combos = () => {
           <Card key={combo.id}>
             <CardHeader>
               <img
-                src={`${API_URL}/images/combo-${combo.id}.png`}
+                src={`${API_IMG_URL}/images/combo-${combo.id}.png`}
                 alt={combo.name}
                 className="w-full h-48 object-cover rounded-lg"
               />

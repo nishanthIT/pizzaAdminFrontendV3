@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Topping, toppingService } from "@/services/toppingService";
+import { Loading } from "@/components/ui/loading";
 
 const Toppings = () => {
   const { toast } = useToast();
@@ -173,7 +174,7 @@ const Toppings = () => {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <Loading message="Loading toppings..." />;
   }
 
   return (

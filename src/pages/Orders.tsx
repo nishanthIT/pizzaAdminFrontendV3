@@ -1,17 +1,17 @@
-
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import RecentOrders from "@/components/dashboard/RecentOrders";
-import { 
+import {
   Table,
   TableBody,
   TableCaption,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow 
+  TableRow,
 } from "@/components/ui/table";
 import { MapPin, ShoppingBag, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import OrderStatusSelect from "@/components/custom/OrderStatusSelect";
+import { Loading } from "@/components/ui/loading";
 
 interface OrderContactInfo {
   address?: string;
@@ -26,55 +28,82 @@ interface OrderContactInfo {
   type: "delivery" | "pickup";
 }
 
+interface Order {
+  id: string;
+  customerName: string;
+  createdAt: string;
+  status: "PENDING" | "CONFIRMED" | "DELIVERED" | "CANCELLED";
+  deliveryMethod: string;
+  deliveryAddress?: string;
+  totalAmount: number;
+  user: {
+    phone: string;
+  };
+}
+import api from "@/services/api"; // Adjust the import based on your project structure
+
+// Example service call
+const getAllOrders = async () => {
+  try {
+    console.log("Token:", localStorage.getItem("adminToken")); // Debug token
+    const response = await api.get("/admin/getAllOrders");
+    return response.data;
+  } catch (error) {
+    console.error("Full error:", error); // Debug full error
+    throw error;
+  }
+};
+
 const Orders = () => {
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState<Order[]>([]);
   const [contactInfo, setContactInfo] = useState<OrderContactInfo | null>(null);
   const [showContactInfo, setShowContactInfo] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const orderData = [
-    {
-      id: "#12345",
-      customer: "John Doe",
-      date: "2023-04-15",
-      status: "Delivered",
-      type: "delivery",
-      address: "123 Main St, Anytown, USA",
-      phone: "555-123-4567"
-    },
-    {
-      id: "#12346",
-      customer: "Jane Smith",
-      date: "2023-04-14", 
-      status: "Processing",
-      type: "pickup",
-      phone: "555-987-6543"
-    },
-    {
-      id: "#12347",
-      customer: "Bob Johnson",
-      date: "2023-04-13",
-      status: "Delivered",
-      type: "delivery",
-      address: "456 Oak Ave, Springfield, USA",
-      phone: "555-555-5555"
-    }
-  ];
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        // Use the api instance instead of fetch
+        const response = await api.get("/getAllOrders");
+        setOrders(response.data);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleTypeClick = (type: "delivery" | "pickup", address?: string, phone?: string) => {
+    fetchOrders();
+  }, []);
+
+  const handleTypeClick = (
+    type: "delivery" | "pickup",
+    address?: string,
+    phone?: string
+  ) => {
     if (phone) {
       setContactInfo({
         type,
         address,
-        phone
+        phone,
       });
       setShowContactInfo(true);
     }
   };
 
+  const handleOrderClick = (orderId: string) => {
+    navigate(`/orders/${orderId}`);
+  };
+
+  if (loading) {
+    return <Loading message="Loading orders..." />;
+  }
+
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold tracking-tight">Order Management</h1>
-      
-      {/* Quick Overview Table */}
+
       <div className="rounded-md border bg-white shadow-sm">
         <Table>
           <TableCaption>Current Order Summary</TableCaption>
@@ -82,36 +111,59 @@ const Orders = () => {
             <TableRow>
               <TableHead>Order ID</TableHead>
               <TableHead>Customer</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Amount</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Type</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orderData.map((order) => (
-              <TableRow key={order.id}>
+            {orders.map((order) => (
+              <TableRow
+                key={order.id}
+                className="cursor-pointer hover:bg-gray-50"
+                onClick={() => handleOrderClick(order.id)}
+              >
                 <TableCell className="font-medium">{order.id}</TableCell>
-                <TableCell>{order.customer}</TableCell>
-                <TableCell>{order.date}</TableCell>
+                <TableCell>{order.customerName}</TableCell>
+                <TableCell>{order.user.phone}</TableCell>
+                <TableCell>£{Number(order.totalAmount).toFixed(2)}</TableCell>
                 <TableCell>
-                  <Badge variant={order.status === "Delivered" ? "default" : "secondary"}>
-                    {order.status}
-                  </Badge>
+                  {new Date(order.createdAt).toLocaleDateString()}
                 </TableCell>
                 <TableCell>
-                  <Badge 
+                  <OrderStatusSelect
+                    orderId={order.id}
+                    currentStatus={order.status}
+                    onStatusChange={(newStatus) => {
+                      setOrders(
+                        orders.map((o) =>
+                          o.id === order.id
+                            ? { ...o, status: newStatus as Order["status"] }
+                            : o
+                        )
+                      );
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Badge
                     className={`inline-flex items-center gap-1 cursor-pointer ${
-                      order.type === "delivery" 
-                        ? "bg-indigo-100 text-indigo-800 hover:bg-indigo-200" 
+                      order.deliveryMethod === "delivery"
+                        ? "bg-indigo-100 text-indigo-800 hover:bg-indigo-200"
                         : "bg-amber-100 text-amber-800 hover:bg-amber-200"
                     }`}
-                    onClick={() => handleTypeClick(
-                      order.type as "delivery" | "pickup", 
-                      order.address, 
-                      order.phone
-                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTypeClick(
+                        order.deliveryMethod as "delivery" | "pickup",
+                        order.deliveryAddress,
+                        order.user.phone
+                      );
+                    }}
                   >
-                    {order.type === "delivery" ? (
+                    {order.deliveryMethod === "delivery" ? (
                       <>
                         <MapPin className="h-3 w-3" />
                         <span>Delivery</span>
@@ -135,7 +187,9 @@ const Orders = () => {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>
-              {contactInfo?.type === "delivery" ? "Delivery Information" : "Pickup Information"}
+              {contactInfo?.type === "delivery"
+                ? "Delivery Information"
+                : "Pickup Information"}
             </DialogTitle>
             <DialogDescription>
               Contact details for this order.
@@ -146,7 +200,9 @@ const Orders = () => {
               <div className="flex items-start gap-2">
                 <MapPin className="h-5 w-5 text-gray-500 mt-0.5" />
                 <div>
-                  <p className="font-medium text-sm text-gray-500">Delivery Address</p>
+                  <p className="font-medium text-sm text-gray-500">
+                    Delivery Address
+                  </p>
                   <p className="text-gray-900">{contactInfo.address}</p>
                 </div>
               </div>
@@ -154,16 +210,15 @@ const Orders = () => {
             <div className="flex items-start gap-2">
               <Phone className="h-5 w-5 text-gray-500 mt-0.5" />
               <div>
-                <p className="font-medium text-sm text-gray-500">Contact Number</p>
+                <p className="font-medium text-sm text-gray-500">
+                  Contact Number
+                </p>
                 <p className="text-gray-900">{contactInfo?.phone}</p>
               </div>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Detailed Orders Component */}
-      <RecentOrders />
     </div>
   );
 };

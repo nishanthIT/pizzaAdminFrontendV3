@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { Category, categoryService } from "@/services/categoryService";
+import { Loading } from "@/components/ui/loading";
 
 const Categories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -36,8 +37,10 @@ const Categories = () => {
   const fetchCategories = async () => {
     try {
       const data = await categoryService.getCategories();
-      setCategories(data);
+      setCategories(Array.isArray(data) ? data : []);
     } catch (error) {
+      console.error("Fetch error:", error);
+      setCategories([]);
       toast({
         title: "Error",
         description: "Failed to fetch categories",
@@ -140,7 +143,24 @@ const Categories = () => {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <Loading message="Loading categories..." />;
+  }
+
+  if (!categories || categories.length === 0) {
+    return (
+      <div className="space-y-8">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold tracking-tight">
+            Category Management
+          </h1>
+          <Button onClick={() => handleOpenDialog()}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Category
+          </Button>
+        </div>
+        <div className="text-center py-8">No categories found</div>
+      </div>
+    );
   }
 
   return (
@@ -155,34 +175,40 @@ const Categories = () => {
         </Button>
       </div>
 
-      <div className="rounded-md border bg-white shadow-sm">
+      <div className="rounded-md border">
         <Table>
-          <TableCaption>List of product categories</TableCaption>
+          <TableCaption>A list of all categories</TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Description</TableHead>
-              <TableHead className="w-[150px] text-right">Actions</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {categories.map((category) => (
               <TableRow key={category.id}>
-                <TableCell className="font-medium">{category.name}</TableCell>
+                <TableCell>{category.name}</TableCell>
                 <TableCell>{category.description}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
+                <TableCell>
+                  <div className="flex gap-2">
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="icon"
-                      onClick={() => handleOpenDialog(category)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenDialog(category);
+                      }}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="icon"
-                      onClick={() => handleDeleteDialog(category)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteDialog(category);
+                      }}
                     >
                       <Trash className="h-4 w-4" />
                     </Button>

@@ -1,6 +1,4 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:3000/api";
+import api from "@/services/api";
 
 export interface PizzaSize {
   size: "SMALL" | "MEDIUM" | "LARGE";
@@ -24,56 +22,55 @@ export interface PizzaIngredient {
 export interface Pizza {
   id: string;
   name: string;
-  description?: string;
-  imageUrl?: string;
-  sizes: Record<string, number>; // { SMALL: price, MEDIUM: price, LARGE: price }
-  categoryId: string;
-  category?: {
-    id: string;
-    name: string;
+  description: string | null;
+  imageUrl: string | null;
+  sizes: {
+    SMALL: number;
+    MEDIUM: number;
+    LARGE: number;
   };
+  categoryId: string;
   defaultToppings: Array<{
-    id: string;
-    name: string;
-    price: string | number;
-    quantity: number;
     topping: {
       id: string;
       name: string;
-      price: string | number;
+      price: number;
     };
+    quantity: number;
   }>;
   defaultIngredients: Array<{
-    id: string;
-    name: string;
-    price: string | number;
-    quantity: number;
     ingredient: {
       id: string;
       name: string;
-      price: string | number;
+      price: number;
     };
+    quantity: number;
   }>;
+}
+
+interface PizzaResponse {
+  message: string;
+  pizzas: Pizza[];
 }
 
 export const pizzaService = {
   getAllPizzas: async (): Promise<Pizza[]> => {
     try {
-      const response = await axios.get(`${API_URL}/getAllPizzas`);
+      const response = await api.get<PizzaResponse>("/getAllPizzas");
       console.log("Raw API response:", response.data);
-      const pizzas = response.data.pizzas || [];
 
-      // Process pizzas to ensure sizes is always an object
-      const processedPizzas = pizzas.map((pizza) => ({
+      // Access pizzas array from response and parse sizes
+      const pizzas = response.data.pizzas.map((pizza) => ({
         ...pizza,
+        // Parse the sizes string if it's a string
         sizes:
           typeof pizza.sizes === "string"
             ? JSON.parse(pizza.sizes)
             : pizza.sizes,
       }));
 
-      console.log("Processed pizzas:", processedPizzas);
-      return processedPizzas;
+      console.log("Processed pizzas:", pizzas);
+      return pizzas;
     } catch (error) {
       console.error("Error in getAllPizzas:", error);
       throw error;
@@ -98,11 +95,11 @@ export const pizzaService = {
     formData.append("sizes", JSON.stringify(pizza.sizes));
 
     // Add arrays as JSON strings
-    if (pizza.toppings && pizza.toppings.length > 0) {
+    if (pizza.toppings?.length > 0) {
       formData.append("toppings", JSON.stringify(pizza.toppings));
     }
 
-    if (pizza.ingredients && pizza.ingredients.length > 0) {
+    if (pizza.ingredients?.length > 0) {
       formData.append("ingredients", JSON.stringify(pizza.ingredients));
     }
 
@@ -111,7 +108,7 @@ export const pizzaService = {
       formData.append("image", pizza.image);
     }
 
-    const response = await axios.post(`${API_URL}/addPizza`, formData, {
+    const response = await api.post("/addPizza", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -142,11 +139,11 @@ export const pizzaService = {
     formData.append("sizes", JSON.stringify(pizza.sizes));
 
     // Add arrays as JSON strings
-    if (pizza.toppings && pizza.toppings.length > 0) {
+    if (pizza.toppings?.length > 0) {
       formData.append("toppings", JSON.stringify(pizza.toppings));
     }
 
-    if (pizza.ingredients && pizza.ingredients.length > 0) {
+    if (pizza.ingredients?.length > 0) {
       formData.append("ingredients", JSON.stringify(pizza.ingredients));
     }
 
@@ -155,7 +152,7 @@ export const pizzaService = {
       formData.append("image", pizza.image);
     }
 
-    const response = await axios.put(`${API_URL}/updatePizza`, formData, {
+    const response = await api.put("/updatePizza", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -165,7 +162,7 @@ export const pizzaService = {
   },
 
   deletePizza: async (pizzaId: string): Promise<void> => {
-    await axios.delete(`${API_URL}/deletePizza`, {
+    await api.delete("/deletePizza", {
       data: { pizzaId },
     });
   },

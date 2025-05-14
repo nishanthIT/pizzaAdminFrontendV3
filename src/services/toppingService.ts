@@ -1,6 +1,4 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:3000/api";
+import api from "@/services/api";
 
 export interface Topping {
   id: string;
@@ -9,36 +7,61 @@ export interface Topping {
   status: boolean;
 }
 
+interface ToppingResponse {
+  message: string;
+  data: Topping | Topping[];
+}
+
 export const toppingService = {
   getToppings: async (): Promise<Topping[]> => {
-    const response = await axios.get(`${API_URL}/getToppings`);
-    return response.data.data;
+    try {
+      const response = await api.get<ToppingResponse>("/getToppings");
+      return Array.isArray(response.data.data) ? response.data.data : [];
+    } catch (error) {
+      console.error("Error fetching toppings:", error);
+      throw new Error("Failed to fetch toppings");
+    }
   },
 
-  addTopping: async (
-    topping: Omit<Topping, "id" | "status">
-  ): Promise<Topping> => {
-    const response = await axios.post(`${API_URL}/addTopping`, topping);
-    return response.data.data;
+  addTopping: async (topping: Omit<Topping, "id" | "status">): Promise<Topping> => {
+    try {
+      const response = await api.post<ToppingResponse>("/addTopping", topping);
+      return response.data.data as Topping;
+    } catch (error) {
+      console.error("Error adding topping:", error);
+      throw new Error("Failed to add topping");
+    }
   },
 
   updateTopping: async (topping: Omit<Topping, "status">): Promise<Topping> => {
-    const response = await axios.put(`${API_URL}/updateTopping`, topping);
-    return response.data.data;
+    try {
+      const response = await api.put<ToppingResponse>("/updateTopping", topping);
+      return response.data.data as Topping;
+    } catch (error) {
+      console.error("Error updating topping:", error);
+      throw new Error("Failed to update topping");
+    }
   },
 
-  updateToppingStatus: async (
-    id: string,
-    status: boolean
-  ): Promise<Topping> => {
-    const response = await axios.put(`${API_URL}/updateStatusTopping`, {
-      id,
-      status,
-    });
-    return response.data.data;
+  updateToppingStatus: async (id: string, status: boolean): Promise<Topping> => {
+    try {
+      const response = await api.put<ToppingResponse>("/updateStatusTopping", {
+        id,
+        status,
+      });
+      return response.data.data as Topping;
+    } catch (error) {
+      console.error("Error updating topping status:", error);
+      throw new Error("Failed to update topping status");
+    }
   },
 
   deleteTopping: async (id: string): Promise<void> => {
-    await axios.delete(`${API_URL}/deleteTopping`, { data: { id } });
+    try {
+      await api.delete("/deleteTopping", { data: { id } });
+    } catch (error) {
+      console.error("Error deleting topping:", error);
+      throw new Error("Failed to delete topping");
+    }
   },
 };

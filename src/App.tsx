@@ -1,12 +1,11 @@
-
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Index from "./pages/Index";
 import Orders from "./pages/Orders";
+import OrderDetails from "./pages/OrderDetails";
 import Customers from "./pages/Customers";
 import Toppings from "./pages/Toppings";
 import Ingredients from "./pages/Ingredients";
@@ -14,33 +13,60 @@ import Pizzas from "./pages/Pizzas";
 import Combos from "./pages/Combos";
 import Categories from "./pages/Categories";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Login from "./pages/Login";
+import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
       <BrowserRouter>
-        <div className="min-h-screen bg-gray-50">
-          <div className="flex">
-            <Sidebar />
-            <main className="flex-1 p-6 lg:p-8 pt-16 lg:pt-8">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/orders" element={<Orders />} />
-                <Route path="/customers" element={<Customers />} />
-                <Route path="/toppings" element={<Toppings />} />
-                <Route path="/ingredients" element={<Ingredients />} />
-                <Route path="/pizzas" element={<Pizzas />} />
-                <Route path="/combos" element={<Combos />} />
-                <Route path="/categories" element={<Categories />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
-          </div>
-        </div>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <div className="min-h-screen bg-gray-50">
+                    <div className="flex">
+                      <Sidebar />
+                      {/* Updated main content container with proper spacing */}
+                      <main className="flex-1 p-6 lg:p-8 pt-16 lg:pt-8 ml-0 lg:ml-64">
+                        <div className="max-w-[calc(100vw-16rem)] mx-auto">
+                          <Routes>
+                            <Route path="/" element={<Index />} />
+                            <Route path="/orders" element={<Orders />} />
+                            <Route
+                              path="/orders/:id"
+                              element={<OrderDetails />}
+                            />
+                            <Route path="/customers" element={<Customers />} />
+                            <Route path="/toppings" element={<Toppings />} />
+                            <Route
+                              path="/ingredients"
+                              element={<Ingredients />}
+                            />
+                            <Route path="/pizzas" element={<Pizzas />} />
+                            <Route path="/combos" element={<Combos />} />
+                            <Route
+                              path="/categories"
+                              element={<Categories />}
+                            />
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </div>
+                      </main>
+                    </div>
+                  </div>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+          <Toaster />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

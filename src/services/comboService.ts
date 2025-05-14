@@ -1,4 +1,4 @@
-import { API_URL } from "./config";
+import api from "@/services/api";
 
 export type PizzaSize = "SMALL" | "MEDIUM" | "LARGE";
 
@@ -48,39 +48,38 @@ export type Pizza = {
   categoryId: string;
 };
 
+interface ComboResponse {
+  message?: string;
+  data?: BackendCombo[];
+}
+
 export const comboService = {
   // Get all pizzas
   async getAllPizzas(): Promise<{ message: string; pizzas: Pizza[] }> {
     try {
-      const response = await fetch(`${API_URL}/getAllPizzas`);
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to fetch pizzas");
-      }
-      return response.json();
+      const response = await api.get("/getAllPizzas");
+      return response.data;
     } catch (error) {
       console.error("Error fetching pizzas:", error);
-      throw error;
+      throw new Error("Failed to fetch pizzas");
     }
   },
 
   // Get all combos
-  async getAllCombos(): Promise<BackendCombo[]> {
+  getAllCombos: async (): Promise<BackendCombo[]> => {
     try {
-      const response = await fetch(`${API_URL}/getComboOffer`);
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to fetch combos");
-      }
-      return response.json();
+      const response = await api.get<BackendCombo[]>("/getComboOffer");
+      console.log("Raw combo response:", response.data);
+      // The response is already an array of combos
+      return response.data || [];
     } catch (error) {
       console.error("Error fetching combos:", error);
-      throw error;
+      throw new Error("Failed to fetch combos");
     }
   },
 
   // Add new combo
-  async addCombo(data: ComboFormData, image: File): Promise<BackendCombo> {
+  addCombo: async (data: ComboFormData, image: File): Promise<BackendCombo> => {
     try {
       const formData = new FormData();
       formData.append("image", image);
@@ -89,49 +88,65 @@ export const comboService = {
       formData.append("discount", data.discount.toString());
       formData.append("pizzas", JSON.stringify(data.pizzas));
 
-      const response = await fetch(`${API_URL}/addComboOffer`, {
-        method: "POST",
-        body: formData,
-      });
+      const response = await api.post<{ data: BackendCombo }>(
+        "/addComboOffer",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to add combo");
-      }
-
-      return response.json();
+      return response.data.data;
     } catch (error) {
       console.error("Error adding combo:", error);
-      throw error;
+      throw new Error("Failed to add combo");
     }
   },
 
   // Edit combo
-  async editCombo(
+  editCombo: async (
     id: string,
     data: ComboFormData,
     image?: File
-  ): Promise<BackendCombo> {
+  ): Promise<BackendCombo> => {
     try {
       const formData = new FormData();
-      if (image) formData.append("image", image);
+      if (image) {
+        formData.append("image", image);
+      }
+      // Add id to both formData and URL params
       formData.append("id", id);
       formData.append("name", data.name);
       formData.append("description", data.description);
       formData.append("discount", data.discount.toString());
       formData.append("pizzas", JSON.stringify(data.pizzas));
 
-      const response = await fetch(`${API_URL}/editComboOffer`, {
-        method: "PUT",
-        body: formData,
+      console.log("Sending update data:", {
+        id,
+        data,
+        hasImage: !!image,
+        formDataEntries: Array.from(formData.entries()),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to edit combo");
+      // Remove the ID from URL path since backend expects it in the body
+      const response = await api.put<{ data: BackendCombo }>(
+        "/editComboOffer",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (!response.data) {
+        throw new Error("No data received from server");
       }
 
-      return response.json();
+      console.log("Update response:", response.data);
+      return response.data.data;
     } catch (error) {
       console.error("Error editing combo:", error);
       throw error;
@@ -139,23 +154,14 @@ export const comboService = {
   },
 
   // Delete combo
-  async deleteCombo(comboId: string): Promise<void> {
+  deleteCombo: async (comboId: string): Promise<void> => {
     try {
-      const response = await fetch(`${API_URL}/deleteComboOffer`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ comboId }),
+      await api.delete("/deleteComboOffer", {
+        data: { comboId },
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to delete combo");
-      }
     } catch (error) {
       console.error("Error deleting combo:", error);
-      throw error;
+      throw new Error("Failed to delete combo");
     }
   },
 };

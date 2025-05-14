@@ -1,6 +1,4 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:3000/api";
+import api from "@/services/api";
 
 export interface Category {
   id: string;
@@ -8,23 +6,49 @@ export interface Category {
   description: string;
 }
 
+interface CategoryResponse {
+  message: string;
+  data: Category[];
+}
+
 export const categoryService = {
   getCategories: async (): Promise<Category[]> => {
-    const response = await axios.get(`${API_URL}/getCategories`);
-    return response.data.data;
+    try {
+      const response = await api.get<CategoryResponse>("/getCategories");
+      // Access the data property from the response
+      return response.data.data || [];
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      throw new Error("Failed to fetch categories");
+    }
   },
 
   addCategory: async (category: Omit<Category, "id">): Promise<Category> => {
-    const response = await axios.post(`${API_URL}/addCategory`, category);
-    return response.data.data;
+    try {
+      const response = await api.post("/addCategory", category);
+      return response.data;
+    } catch (error) {
+      console.error("Error adding category:", error);
+      throw new Error("Failed to add category");
+    }
   },
 
   updateCategory: async (category: Category): Promise<Category> => {
-    const response = await axios.put(`${API_URL}/updateCategory`, category);
-    return response.data.data;
+    try {
+      const response = await api.put("/updateCategory", category);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating category:", error);
+      throw new Error("Failed to update category");
+    }
   },
 
   deleteCategory: async (id: string): Promise<void> => {
-    await axios.delete(`${API_URL}/deleteCategory`, { data: { id } });
+    try {
+      await api.delete("/deleteCategory", { data: { id } });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      throw new Error("Failed to delete category");
+    }
   },
 };

@@ -39,7 +39,8 @@ import { Pizza, pizzaService } from "@/services/pizzaService";
 import { Category, categoryService } from "@/services/categoryService";
 import { Topping, toppingService } from "@/services/toppingService";
 import { Ingredient, ingredientService } from "@/services/ingredientService";
-import { API_URL } from "@/services/config";
+import { API_IMG_URL, API_URL } from "@/services/config";
+import { Loading } from "@/components/ui/loading";
 
 interface PizzaTopping {
   id: string;
@@ -370,7 +371,7 @@ const Pizzas = () => {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <Loading message="Loading pizzas..." />;
   }
 
   return (
@@ -401,7 +402,9 @@ const Pizzas = () => {
                 <TableRow key={pizza.id}>
                   <TableCell>
                     <img
-                      src={`${API_URL}/images/pizza-${pizza.id}.png`}
+                      src={`${API_IMG_URL}/images/pizza-${
+                        pizza.id
+                      }.png?v=${Math.random()}`}
                       alt="Preview"
                       className="w-12 h-12 object-cover rounded-md"
                     />
