@@ -458,7 +458,7 @@ const Pizzas = () => {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-scroll">
           <DialogHeader>
             <DialogTitle>
               {editingPizza ? "Edit Pizza" : "Add New Pizza"}

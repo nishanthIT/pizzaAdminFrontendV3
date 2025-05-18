@@ -146,23 +146,6 @@ const Categories = () => {
     return <Loading message="Loading categories..." />;
   }
 
-  if (!categories || categories.length === 0) {
-    return (
-      <div className="space-y-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Category Management
-          </h1>
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Category
-          </Button>
-        </div>
-        <div className="text-center py-8">No categories found</div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -175,50 +158,54 @@ const Categories = () => {
         </Button>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableCaption>A list of all categories</TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {categories.map((category) => (
-              <TableRow key={category.id}>
-                <TableCell>{category.name}</TableCell>
-                <TableCell>{category.description}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenDialog(category);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteDialog(category);
-                      }}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+      {!categories || categories.length === 0 ? (
+        <div className="text-center py-8">No categories found</div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableCaption>A list of all categories</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {categories.map((category) => (
+                <TableRow key={category.id}>
+                  <TableCell>{category.name}</TableCell>
+                  <TableCell>{category.description}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDialog(category);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteDialog(category);
+                        }}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Add/Edit Category Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
