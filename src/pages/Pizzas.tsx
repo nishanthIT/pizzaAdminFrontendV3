@@ -95,6 +95,8 @@ const Pizzas = () => {
   const [largePrice, setLargePrice] = useState("");
   const [category, setCategory] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [Loading, setLoading] = useState(false);
+  
   const [selectedToppings, setSelectedToppings] = useState<PizzaTopping[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<
     PizzaIngredient[]
@@ -145,6 +147,7 @@ const Pizzas = () => {
     setSelectedToppings([]);
     setSelectedIngredients([]);
     setIsDialogOpen(true);
+    setDescription("")
   };
 
   const handleEdit = (pizza: Pizza) => {
@@ -262,6 +265,7 @@ const Pizzas = () => {
   };
 
   const handleSave = async () => {
+    setLoading(true);
     if (!name || !smallPrice || !mediumPrice || !largePrice || !category) {
       toast({
         title: "Error",
@@ -314,6 +318,7 @@ const Pizzas = () => {
             quantity: i.quantity,
           })),
         });
+        
         toast({
           title: "Success",
           description: "Pizza added successfully",
@@ -327,7 +332,9 @@ const Pizzas = () => {
         description: "Failed to save pizza",
         variant: "destructive",
       });
+
     }
+    setLoading(false);
   };
 
   const incrementToppingQuantity = (toppingId: string) => {
@@ -371,7 +378,7 @@ const Pizzas = () => {
   };
 
   if (isLoading) {
-    return <Loading message="Loading pizzas..." />;
+    // return <Loading message="Loading pizzas..." />;
   }
 
   return (
@@ -517,6 +524,16 @@ const Pizzas = () => {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="e.g., Classic pizza with tomato sauce and cheese"
+                />
+              </div>
+         
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
                 <Select value={category} onValueChange={setCategory}>
@@ -673,9 +690,9 @@ const Pizzas = () => {
             </div>
           </div>
           <div className="mt-4">
-            <Button onClick={handleSave}>
-              {editingPizza ? "Update Pizza" : "Add Pizza"}
-            </Button>
+           <Button onClick={handleSave} disabled={isLoading}>
+  {isLoading ? "Loading..." : editingPizza ? "Update Pizza" : "Add Pizza"}
+</Button>
           </div>
         </DialogContent>
       </Dialog>
