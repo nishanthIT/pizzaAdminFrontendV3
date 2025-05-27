@@ -38,13 +38,19 @@ interface OrderDetails {
     size: string;
     price: number;
     isCombo: boolean;
+    isOtherItem?: boolean;
     pizzaId?: string;
     comboId?: string;
+    otherItemId?: string;
     pizza?: {
       name: string;
       imageUrl?: string;
     };
     combo?: {
+      name: string;
+      imageUrl?: string;
+    };
+    otherItem?: {
       name: string;
       imageUrl?: string;
     };
@@ -210,13 +216,25 @@ const OrderDetails = () => {
                         src={
                           item.isCombo
                             ? `${API_IMG_URL}/images/combo-${item.comboId}.png`
+                            : item.isOtherItem
+                            ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
                             : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
                         }
-                        alt={item.isCombo ? item.combo?.name : item.pizza?.name}
+                        alt={
+                          item.isCombo
+                            ? item.combo?.name
+                            : item.isOtherItem
+                            ? item.otherItem?.name
+                            : item.pizza?.name
+                        }
                         className="h-10 w-10 rounded-md object-cover"
                       />
                       <span className="font-medium">
-                        {item.isCombo ? item.combo?.name : item.pizza?.name}
+                        {item.isCombo
+                          ? item.combo?.name
+                          : item.isOtherItem
+                          ? item.otherItem?.name
+                          : item.pizza?.name}
                       </span>
                     </div>
                   </TableCell>

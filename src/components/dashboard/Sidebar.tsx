@@ -12,6 +12,7 @@ import {
   Utensils,
   Ticket,
   LogOut,
+  Gift,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ const Sidebar = () => {
     { icon: Carrot, label: "Ingredients", href: "/ingredients" },
     { icon: Utensils, label: "Pizzas", href: "/pizzas" },
     { icon: Ticket, label: "Combos & Offers", href: "/combos" },
+    { icon: Gift, label: "Other Items", href: "/other-items" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];
 

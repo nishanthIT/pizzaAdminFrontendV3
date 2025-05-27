@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import { AuthProvider } from "./contexts/AuthContext";
+import OtherItems from "./pages/OtherItems";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,10 @@ const App = () => (
                             <Route
                               path="/categories"
                               element={<Categories />}
+                            />
+                            <Route
+                              path="/other-items"
+                              element={<OtherItems />}
                             />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
