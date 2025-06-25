@@ -112,6 +112,9 @@ export const pizzaService = {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      
+      
+
     });
 
     return response.data.pizza;
