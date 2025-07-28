@@ -9,18 +9,51 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import api from "@/services/api";
+
+interface RevenueData {
+  time: string;
+  revenue: number;
+}
 
 const RevenueChart = () => {
-  const [data] = useState([
-    { time: "00:00", revenue: 1200 },
-    { time: "03:00", revenue: 800 },
-    { time: "06:00", revenue: 1500 },
-    { time: "09:00", revenue: 2100 },
-    { time: "12:00", revenue: 1800 },
-    { time: "15:00", revenue: 2400 },
-    { time: "18:00", revenue: 3100 },
-    { time: "21:00", revenue: 2900 },
-  ]);
+  const [data, setData] = useState<RevenueData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRevenueData = async () => {
+      try {
+        const response = await api.get('/dashboard/revenue');
+        setData(response.data);
+      } catch (error) {
+        console.error('Error fetching revenue data:', error);
+        // Fallback to mock data
+        setData([
+          { time: "00:00", revenue: 1200 },
+          { time: "03:00", revenue: 800 },
+          { time: "06:00", revenue: 1500 },
+          { time: "09:00", revenue: 2100 },
+          { time: "12:00", revenue: 1800 },
+          { time: "15:00", revenue: 2400 },
+          { time: "18:00", revenue: 3100 },
+          { time: "21:00", revenue: 2900 },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRevenueData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-white p-6 rounded-xl shadow-sm mb-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">Today's Revenue</h2>
+        <div className="h-[300px] w-full animate-pulse bg-gray-200 rounded"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm mb-6 animate-fade-in">
@@ -45,7 +78,7 @@ const RevenueChart = () => {
               axisLine={false}
               tickLine={false}
               tick={{ fill: "#6B7280" }}
-              tickFormatter={(value) => `$${value}`}
+              tickFormatter={(value) => `£${value}`}
             />
             <Tooltip
               contentStyle={{

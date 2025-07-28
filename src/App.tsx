@@ -36,7 +36,8 @@ const App = () => (
                       <Sidebar />
                       {/* Updated main content container with proper spacing */}
                       <main className="flex-1 p-6 lg:p-8 pt-16 lg:pt-8 ml-0 lg:ml-64">
-                        <div className="max-w-[calc(100vw-16rem)] mx-auto">
+                        {/* <div className="max-w-[calc(100vw-16rem)] mx-auto"> */}
+                        <div className=" mx-auto">
                           <Routes>
                             <Route path="/" element={<Index />} />
                             <Route path="/orders" element={<Orders />} />
