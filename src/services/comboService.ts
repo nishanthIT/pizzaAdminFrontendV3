@@ -19,6 +19,7 @@ export type ComboFormData = {
     quantity: number;
     size: PizzaSize;
   }[];
+  manualPrice?: number;
 };
 
 export type BackendCombo = {
@@ -29,6 +30,7 @@ export type BackendCombo = {
   discount: string;
   price: string;
   pizzas: Array<{
+    pizzaId: string;
     pizza: {
       id: string;
       name: string;
@@ -79,7 +81,11 @@ export const comboService = {
   },
 
   // Add new combo
-  addCombo: async (data: ComboFormData, image: File): Promise<BackendCombo> => {
+  addCombo: async (
+    data: ComboFormData, 
+    image: File,
+    onProgress?: (progress: number) => void
+  ): Promise<BackendCombo> => {
     try {
       const formData = new FormData();
       formData.append("image", image);
@@ -87,6 +93,21 @@ export const comboService = {
       formData.append("description", data.description);
       formData.append("discount", data.discount.toString());
       formData.append("pizzas", JSON.stringify(data.pizzas));
+      
+      // Add manual price if provided
+      if (data.manualPrice !== undefined) {
+        formData.append("manualPrice", data.manualPrice.toString());
+      }
+
+      console.log("FormData being sent:", {
+        name: data.name,
+        description: data.description,
+        discount: data.discount,
+        pizzas: data.pizzas,
+        manualPrice: data.manualPrice,
+        hasImage: !!image,
+        formDataEntries: Array.from(formData.entries())
+      });
 
       const response = await api.post<{ data: BackendCombo }>(
         "/addComboOffer",
@@ -95,13 +116,33 @@ export const comboService = {
           headers: {
             "Content-Type": "multipart/form-data",
           },
+          onUploadProgress: (progressEvent) => {
+            if (onProgress && progressEvent.total) {
+              const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              onProgress(progress);
+            }
+          },
         }
       );
 
-      return response.data.data;
+      console.log("Add combo response:", response.data);
+      
+      // Handle different response structures
+      if (response.data?.data) {
+        return response.data.data;
+      } else if (response.data && typeof response.data === 'object' && 'id' in response.data) {
+        return response.data as BackendCombo;
+      } else {
+        throw new Error("Invalid response structure");
+      }
     } catch (error) {
       console.error("Error adding combo:", error);
-      throw new Error("Failed to add combo");
+      console.error("Error details:", {
+        message: error.message,
+        response: error?.response?.data,
+        status: error?.response?.status
+      });
+      throw error;
     }
   },
 
@@ -109,7 +150,8 @@ export const comboService = {
   editCombo: async (
     id: string,
     data: ComboFormData,
-    image?: File
+    image?: File,
+    onProgress?: (progress: number) => void
   ): Promise<BackendCombo> => {
     try {
       const formData = new FormData();
@@ -122,6 +164,11 @@ export const comboService = {
       formData.append("description", data.description);
       formData.append("discount", data.discount.toString());
       formData.append("pizzas", JSON.stringify(data.pizzas));
+
+      // Add manual price if provided
+      if (data.manualPrice !== undefined) {
+        formData.append("manualPrice", data.manualPrice.toString());
+      }
 
       console.log("Sending update data:", {
         id,
@@ -137,6 +184,12 @@ export const comboService = {
         {
           headers: {
             "Content-Type": "multipart/form-data",
+          },
+          onUploadProgress: (progressEvent) => {
+            if (onProgress && progressEvent.total) {
+              const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              onProgress(progress);
+            }
           },
         }
       );

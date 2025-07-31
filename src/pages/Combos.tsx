@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import {
   Card,
@@ -62,14 +63,19 @@ const Combos = () => {
     imageUrl?: string;
     items: ComboItem[];
     discount: number;
+    manualPrice?: number;
   }>({
     name: "",
     description: "",
     image: null,
     items: [],
     discount: 0,
+    manualPrice: undefined,
   });
+  const [pricingMode, setPricingMode] = useState<'percentage' | 'manual'>('percentage');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     loadCombos();
@@ -81,22 +87,32 @@ const Combos = () => {
       const data = await comboService.getAllCombos();
       console.log("Received combo data:", data);
 
-      const processedCombos = data.map((combo: BackendCombo) => ({
-        id: combo.id,
-        name: combo.name,
-        description: combo.description,
-        image: combo.imageUrl, // Use imageUrl directly from the response
-        items: combo.pizzas.map((p) => ({
+      const processedCombos = data.map((combo: BackendCombo) => {
+        const items = combo.pizzas.map((p) => ({
           id: p.pizzaId, // Update to match the response structure
           name: p.pizza?.name || "", // Add optional chaining
           price: p.pizza?.sizes?.[p.size] || 0,
           quantity: p.quantity,
           size: p.size as PizzaSize,
-        })),
-        discount: Number(combo.discount),
-        totalPrice: Number(combo.price) / (1 - Number(combo.discount) / 100),
-        finalPrice: Number(combo.price),
-      }));
+        }));
+
+        // Calculate actual total price of items
+        const actualTotalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+        // Determine if this is manual pricing (discount = 0) or percentage pricing
+        const isManualPricing = Number(combo.discount) === 0;
+        
+        return {
+          id: combo.id,
+          name: combo.name,
+          description: combo.description,
+          image: combo.imageUrl, // Use imageUrl directly from the response
+          items,
+          discount: Number(combo.discount),
+          totalPrice: actualTotalPrice, // Always use actual calculated total
+          finalPrice: Number(combo.price), // This is either discounted price or manual price
+        };
+      });
 
       console.log("Processed combos:", processedCombos);
       setCombos(processedCombos);
@@ -114,6 +130,9 @@ const Combos = () => {
 
   const handleAddCombo = async () => {
     try {
+      setIsSaving(true);
+      setUploadProgress(0);
+      
       if (!newCombo.name || newCombo.items.length === 0) {
         toast({
           title: "Error",
@@ -124,36 +143,73 @@ const Combos = () => {
         return;
       }
 
+      // Validate pricing based on mode
+      if (pricingMode === 'manual' && (!newCombo.manualPrice || newCombo.manualPrice <= 0)) {
+        toast({
+          title: "Error",
+          description: "Please enter a valid manual price",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (pricingMode === 'percentage' && (newCombo.discount < 0 || newCombo.discount > 100)) {
+        toast({
+          title: "Error",
+          description: "Please enter a valid discount percentage (0-100)",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!newCombo.image && !isEditing) {
+        toast({
+          title: "Error",
+          description: "Please select an image for the combo",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const comboData: ComboFormData = {
         name: newCombo.name,
         description: newCombo.description,
-        discount: newCombo.discount,
+        discount: pricingMode === 'percentage' ? newCombo.discount : 0,
         pizzas: newCombo.items.map((item) => ({
           pizzaId: item.id,
           quantity: item.quantity,
           size: item.size,
         })),
+        ...(pricingMode === 'manual' && newCombo.manualPrice && {
+          manualPrice: newCombo.manualPrice
+        })
       };
 
       console.log("Sending combo data:", {
         isEditing,
         editingComboId,
         comboData,
+        pricingMode,
+        manualPrice: newCombo.manualPrice,
         hasImage: !!newCombo.image,
       });
+
+      const onProgress = (progress: number) => {
+        setUploadProgress(progress);
+      };
 
       if (isEditing && editingComboId) {
         const updatedCombo = await comboService.editCombo(
           editingComboId,
           comboData,
-          newCombo.image || undefined
+          newCombo.image || undefined,
+          onProgress
         );
         console.log("Updated combo response:", updatedCombo);
       } else {
-        if (!newCombo.image) {
-          throw new Error("Image is required for new combos");
-        }
-        await comboService.addCombo(comboData, newCombo.image);
+        console.log("Creating new combo with data:", comboData);
+        const result = await comboService.addCombo(comboData, newCombo.image, onProgress);
+        console.log("Add combo result:", result);
       }
 
       await loadCombos();
@@ -167,11 +223,29 @@ const Combos = () => {
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Error saving combo:", error);
+      console.error("Full error object:", {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status
+      });
+      
+      let errorMessage = "Failed to save combo";
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to save combo",
+        description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
+      setUploadProgress(0);
     }
   };
 
@@ -222,6 +296,12 @@ const Combos = () => {
     console.log("Editing combo:", combo);
     setIsEditing(true);
     setEditingComboId(combo.id);
+    
+    // Determine pricing mode based on combo data
+    // If discount is 0, it's manual pricing
+    const isManualPricing = combo.discount === 0;
+    setPricingMode(isManualPricing ? 'manual' : 'percentage');
+    
     setNewCombo({
       name: combo.name,
       description: combo.description,
@@ -233,6 +313,7 @@ const Combos = () => {
         quantity: Number(item.quantity),
       })),
       discount: Number(combo.discount),
+      manualPrice: isManualPricing ? combo.finalPrice : undefined,
     });
     setIsDialogOpen(true);
   };
@@ -261,9 +342,12 @@ const Combos = () => {
       image: null,
       items: [],
       discount: 0,
+      manualPrice: undefined,
     });
+    setPricingMode('percentage');
     setIsEditing(false);
     setEditingComboId(null);
+    setUploadProgress(0);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -285,7 +369,7 @@ const Combos = () => {
           <DialogTrigger asChild>
             <Button>Add New Combo</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {isEditing ? "Edit Combo" : "Create New Combo"}
@@ -296,7 +380,7 @@ const Combos = () => {
                   : "Create a new combo by selecting items and setting a discount."}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 pr-2">
               <div>
                 <Label htmlFor="name">Combo Name</Label>
                 <Input
@@ -342,21 +426,64 @@ const Combos = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="discount">Discount Percentage</Label>
-                <Input
-                  id="discount"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={newCombo.discount}
-                  onChange={(e) =>
-                    setNewCombo((prev) => ({
-                      ...prev,
-                      discount: Number(e.target.value),
-                    }))
-                  }
-                />
+                <Label>Pricing Method</Label>
+                <RadioGroup 
+                  value={pricingMode} 
+                  onValueChange={(value: 'percentage' | 'manual') => setPricingMode(value)}
+                  className="flex flex-row gap-6 mt-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="percentage" id="percentage" />
+                    <Label htmlFor="percentage">Percentage Discount</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="manual" id="manual" />
+                    <Label htmlFor="manual">Manual Price</Label>
+                  </div>
+                </RadioGroup>
               </div>
+              
+              {pricingMode === 'percentage' ? (
+                <div>
+                  <Label htmlFor="discount">Discount Percentage</Label>
+                  <Input
+                    id="discount"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={newCombo.discount}
+                    onChange={(e) =>
+                      setNewCombo((prev) => ({
+                        ...prev,
+                        discount: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+              ) : (
+                <div>
+                  <Label htmlFor="manualPrice">Manual Price (£)</Label>
+                  <Input
+                    id="manualPrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newCombo.manualPrice || ''}
+                    onChange={(e) =>
+                      setNewCombo((prev) => ({
+                        ...prev,
+                        manualPrice: e.target.value ? Number(e.target.value) : undefined,
+                      }))
+                    }
+                    placeholder="Enter custom price"
+                  />
+                  {newCombo.items.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Total items value: £{newCombo.items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="space-y-4">
                 <Label>Add Items to Combo</Label>
                 <ComboItemSelector
@@ -368,11 +495,7 @@ const Combos = () => {
                   {newCombo.items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between p-2 bor
-                      
-                      
-                      
-                      r rounded"
+                      className="flex items-center justify-between p-2 border rounded"
                     >
                       <div className="flex flex-col">
                         <span className="font-medium">{item.name}</span>
@@ -405,8 +528,20 @@ const Combos = () => {
                   ))}
                 </div>
               </div>
-              <Button onClick={handleAddCombo} className="w-full">
-                {isEditing ? "Update Combo" : "Create Combo"}
+              <Button onClick={handleAddCombo} className="w-full" disabled={isSaving}>
+                {isSaving ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>
+                      {uploadProgress > 0 && uploadProgress < 100 
+                        ? `Uploading... ${uploadProgress}%`
+                        : isEditing ? "Updating..." : "Creating..."
+                      }
+                    </span>
+                  </div>
+                ) : (
+                  isEditing ? "Update Combo" : "Create Combo"
+                )}
               </Button>
             </div>
           </DialogContent>
@@ -425,8 +560,10 @@ const Combos = () => {
               <CardTitle>{combo.name}</CardTitle>
               <CardDescription>{combo.description}</CardDescription>
               <div className="text-sm text-muted-foreground">
-                {combo.discount}% off - Final Price: $
-                {combo.finalPrice.toFixed(2)}
+                {combo.discount > 0 
+                  ? `${combo.discount}% off - Final Price: £${combo.finalPrice.toFixed(2)}`
+                  : `Custom Price: £${combo.finalPrice.toFixed(2)}`
+                }
               </div>
             </CardHeader>
             <CardContent>
@@ -437,13 +574,21 @@ const Combos = () => {
                     <span>
                       {item.name} ({item.size}) x {item.quantity}
                     </span>
-                    <span>${(item.price * item.quantity).toFixed(2)}</span>
+                    <span>£{(item.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
                 <div className="flex justify-between font-medium pt-2 border-t">
-                  <span>Total Before Discount:</span>
-                  <span>${combo.totalPrice.toFixed(2)}</span>
+                  <span>
+                    {combo.discount > 0 ? "Total Before Discount:" : "Items Total:"}
+                  </span>
+                  <span>£{combo.totalPrice.toFixed(2)}</span>
                 </div>
+                {combo.discount > 0 && (
+                  <div className="flex justify-between text-green-600 font-medium">
+                    <span>After {combo.discount}% Discount:</span>
+                    <span>£{combo.finalPrice.toFixed(2)}</span>
+                  </div>
+                )}
               </div>
               <div className="flex gap-2 mt-4">
                 <Button
