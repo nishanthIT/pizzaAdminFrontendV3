@@ -133,19 +133,19 @@ const Customers = () => {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:3003/api/admin/customers", {
+      const response = await fetch("https://backend.addiscombepizza.co.uk/api/admin/customers", {
         credentials: "include",
         headers: {
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setCustomers(data.customers);
       } else {
@@ -174,7 +174,7 @@ const Customers = () => {
     if (!selectedCustomer) return;
 
     try {
-      const response = await fetch(`http://localhost:3003/api/admin/customers/${selectedCustomer.id}`, {
+      const response = await fetch(`https://backend.addiscombepizza.co.uk/api/admin/customers/${selectedCustomer.id}`, {
         method: 'PUT',
         credentials: "include",
         headers: {
@@ -209,12 +209,12 @@ const Customers = () => {
 
   const handleViewDetails = async (customer) => {
     try {
-      const response = await fetch(`http://localhost:3003/api/admin/customers/${customer.id}`, {
+      const response = await fetch(`https://backend.addiscombepizza.co.uk/api/admin/customers/${customer.id}`, {
         credentials: "include"
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setSelectedCustomer(data.customer);
       } else {
@@ -273,7 +273,7 @@ const Customers = () => {
                             </span>
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-3 gap-2 text-xs">
                           <div>
                             <span className="text-gray-500">Orders:</span>

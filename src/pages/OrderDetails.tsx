@@ -74,10 +74,10 @@ interface OrderDetails {
 }
 
 // Component to show pizza modifications with comparison to original
-const PizzaModifications = ({ item, onFetchPizza, isMobile }: { 
-  item: any, 
+const PizzaModifications = ({ item, onFetchPizza, isMobile }: {
+  item: any,
   onFetchPizza: (pizzaId: string) => Promise<any>,
-  isMobile: boolean 
+  isMobile: boolean
 }) => {
   const [originalPizza, setOriginalPizza] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -144,15 +144,15 @@ const PizzaModifications = ({ item, onFetchPizza, isMobile }: {
             {allToppings.map((topping: any, idx: number) => {
               const original = originalToppings.get(topping.name);
               const isDefault = original && original.quantity === topping.quantity;
-              
+
               // Green if matches default, orange if modified
-              const badgeColor = isDefault 
+              const badgeColor = isDefault
                 ? 'bg-green-50 text-green-700 border border-green-200'
                 : 'bg-orange-50 text-orange-700 border border-orange-200';
 
               return (
-                <span 
-                  key={`topping-${idx}`} 
+                <span
+                  key={`topping-${idx}`}
                   className={`${badgeColor} ${badgeSize} rounded-md inline-flex items-center font-medium`}
                 >
                   {topping.name} ({topping.quantity})
@@ -176,17 +176,17 @@ const OrderDetails = () => {
   const { id } = useParams();
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pizzaDetails, setPizzaDetails] = useState<{[key: string]: any}>({});
+  const [pizzaDetails, setPizzaDetails] = useState<{ [key: string]: any }>({});
 
   // Fetch pizza details for modification comparison
   const fetchPizzaDetails = async (pizzaId: string) => {
     if (pizzaDetails[pizzaId]) return pizzaDetails[pizzaId];
-    
+
     try {
       // Use the main API endpoint (port 3003) instead of admin API
-      const response = await fetch(`http://localhost:3003/api/getPizzaById/${pizzaId}`);
+      const response = await fetch(`https://backend.addiscombepizza.co.uk/api/getPizzaById/${pizzaId}`);
       const data = await response.json();
-      
+
       // Try different response structures
       let pizza = null;
       if (data) {
@@ -203,7 +203,7 @@ const OrderDetails = () => {
           pizza = data[0];
         }
       }
-      
+
       if (pizza && (pizza.id || pizza.name)) {
         setPizzaDetails(prev => ({ ...prev, [pizzaId]: pizza }));
         return pizza;
@@ -274,8 +274,8 @@ const OrderDetails = () => {
             order.status === "DELIVERED"
               ? "default"
               : order.status === "CANCELLED"
-              ? "destructive"
-              : "secondary"
+                ? "destructive"
+                : "secondary"
           }
           className="self-start md:self-auto"
         >
@@ -371,11 +371,11 @@ const OrderDetails = () => {
                   if (item.isCombo) {
                     return item.combo?.name || 'Combo Item';
                   } else if (item.isOtherItem) {
-                    return item.otherItem?.name || 
-                           item.otherItem?.title || 
-                           item.title || 
-                           item.name || 
-                           'Other Item';
+                    return item.otherItem?.name ||
+                      item.otherItem?.title ||
+                      item.title ||
+                      item.name ||
+                      'Other Item';
                   } else {
                     return item.pizza?.name || 'Custom Pizza';
                   }
@@ -390,8 +390,8 @@ const OrderDetails = () => {
                             item.isCombo
                               ? `${API_IMG_URL}/images/combo-${item.comboId}.png`
                               : item.isOtherItem
-                              ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
-                              : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
+                                ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
+                                : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
                           }
                           alt={getItemName()}
                           className="h-12 w-12 rounded-md object-cover flex-shrink-0"
@@ -418,12 +418,12 @@ const OrderDetails = () => {
                           </p>
                         </div>
                       </div>
-                      
+
                       {/* Mobile Modifications */}
                       {!item.isCombo && !item.isOtherItem && (
                         <div className="mt-3 pt-3 border-t border-gray-100">
-                          <PizzaModifications 
-                            item={item} 
+                          <PizzaModifications
+                            item={item}
                             onFetchPizza={fetchPizzaDetails}
                             isMobile={true}
                           />
@@ -460,11 +460,11 @@ const OrderDetails = () => {
                     if (item.isCombo) {
                       return item.combo?.name || 'Combo Item';
                     } else if (item.isOtherItem) {
-                      return item.otherItem?.name || 
-                             item.otherItem?.title || 
-                             item.title || 
-                             item.name || 
-                             'Other Item';
+                      return item.otherItem?.name ||
+                        item.otherItem?.title ||
+                        item.title ||
+                        item.name ||
+                        'Other Item';
                     } else {
                       return item.pizza?.name || 'Custom Pizza';
                     }
@@ -479,8 +479,8 @@ const OrderDetails = () => {
                               item.isCombo
                                 ? `${API_IMG_URL}/images/combo-${item.comboId}.png`
                                 : item.isOtherItem
-                                ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
-                                : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
+                                  ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
+                                  : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
                             }
                             alt={getItemName()}
                             className="h-10 w-10 rounded-md object-cover"
@@ -499,8 +499,8 @@ const OrderDetails = () => {
                       <TableCell>{item.quantity}</TableCell>
                       <TableCell>
                         {!item.isCombo && !item.isOtherItem && (
-                          <PizzaModifications 
-                            item={item} 
+                          <PizzaModifications
+                            item={item}
                             onFetchPizza={fetchPizzaDetails}
                             isMobile={false}
                           />
