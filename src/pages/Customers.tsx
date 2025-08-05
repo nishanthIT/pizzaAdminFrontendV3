@@ -133,7 +133,7 @@ const Customers = () => {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const response = await fetch("https://backend.addiscombepizza.co.uk/api/admin/customers", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/customers`, {
         credentials: "include",
         headers: {
           'Content-Type': 'application/json'
@@ -174,7 +174,7 @@ const Customers = () => {
     if (!selectedCustomer) return;
 
     try {
-      const response = await fetch(`https://backend.addiscombepizza.co.uk/api/admin/customers/${selectedCustomer.id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/customers/${selectedCustomer.id}`, {
         method: 'PUT',
         credentials: "include",
         headers: {
@@ -209,7 +209,7 @@ const Customers = () => {
 
   const handleViewDetails = async (customer) => {
     try {
-      const response = await fetch(`https://backend.addiscombepizza.co.uk/api/admin/customers/${customer.id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/customers/${customer.id}`, {
         credentials: "include"
       });
 

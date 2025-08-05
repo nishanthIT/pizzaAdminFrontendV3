@@ -184,7 +184,7 @@ const OrderDetails = () => {
 
     try {
       // Use the main API endpoint (port 3003) instead of admin API
-      const response = await fetch(`https://backend.addiscombepizza.co.uk/api/getPizzaById/${pizzaId}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/getPizzaById/${pizzaId}`);
       const data = await response.json();
 
       // Try different response structures
