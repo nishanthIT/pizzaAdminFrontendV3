@@ -23,7 +23,7 @@ const RevenueChart = () => {
   useEffect(() => {
     const fetchRevenueData = async () => {
       try {
-        const response = await api.get('/dashboard/revenue');
+        const response = await api.get('/api/admin/dashboard/revenue');
         setData(response.data);
       } catch (error) {
         console.error('Error fetching revenue data:', error);

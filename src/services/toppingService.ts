@@ -15,7 +15,7 @@ interface ToppingResponse {
 export const toppingService = {
   getToppings: async (): Promise<Topping[]> => {
     try {
-      const response = await api.get<ToppingResponse>("/getToppings");
+      const response = await api.get<ToppingResponse>("/api/admin/getToppings");
       return Array.isArray(response.data.data) ? response.data.data : [];
     } catch (error) {
       console.error("Error fetching toppings:", error);
@@ -25,7 +25,7 @@ export const toppingService = {
 
   addTopping: async (topping: Omit<Topping, "id" | "status">): Promise<Topping> => {
     try {
-      const response = await api.post<ToppingResponse>("/addTopping", topping);
+      const response = await api.post<ToppingResponse>("/api/admin/addTopping", topping);
       return response.data.data as Topping;
     } catch (error) {
       console.error("Error adding topping:", error);
@@ -35,7 +35,7 @@ export const toppingService = {
 
   updateTopping: async (topping: Omit<Topping, "status">): Promise<Topping> => {
     try {
-      const response = await api.put<ToppingResponse>("/updateTopping", topping);
+      const response = await api.put<ToppingResponse>("/api/admin/updateTopping", topping);
       return response.data.data as Topping;
     } catch (error) {
       console.error("Error updating topping:", error);
@@ -45,7 +45,7 @@ export const toppingService = {
 
   updateToppingStatus: async (id: string, status: boolean): Promise<Topping> => {
     try {
-      const response = await api.put<ToppingResponse>("/updateStatusTopping", {
+      const response = await api.put<ToppingResponse>("/api/admin/updateStatusTopping", {
         id,
         status,
       });
@@ -58,7 +58,7 @@ export const toppingService = {
 
   deleteTopping: async (id: string): Promise<void> => {
     try {
-      await api.delete("/deleteTopping", { data: { id } });
+      await api.delete("/api/admin/deleteTopping", { data: { id } });
     } catch (error) {
       console.error("Error deleting topping:", error);
       throw new Error("Failed to delete topping");

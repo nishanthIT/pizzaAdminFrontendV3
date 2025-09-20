@@ -1,7 +1,7 @@
 import api from "@/services/api";
 
 export interface PizzaSize {
-  size: "SMALL" | "MEDIUM" | "LARGE";
+  size: "MEDIUM" | "LARGE" | "SUPER_SIZE";
   price: number;
 }
 
@@ -25,9 +25,9 @@ export interface Pizza {
   description: string | null;
   imageUrl: string | null;
   sizes: {
-    SMALL: number;
     MEDIUM: number;
     LARGE: number;
+    SUPER_SIZE: number;
   };
   categoryId: string;
   defaultToppings: Array<{
@@ -56,7 +56,7 @@ interface PizzaResponse {
 export const pizzaService = {
   getAllPizzas: async (): Promise<Pizza[]> => {
     try {
-      const response = await api.get<PizzaResponse>("/getAllPizzas");
+      const response = await api.get<PizzaResponse>("/api/admin/getAllPizzas");
       console.log("Raw API response:", response.data);
 
       // Access pizzas array from response and parse sizes
@@ -108,7 +108,7 @@ export const pizzaService = {
       formData.append("image", pizza.image);
     }
 
-    const response = await api.post("/addPizza", formData, {
+    const response = await api.post("/api/admin/addPizza", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -155,7 +155,7 @@ export const pizzaService = {
       formData.append("image", pizza.image);
     }
 
-    const response = await api.put("/updatePizza", formData, {
+    const response = await api.put("/api/admin/updatePizza", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -165,7 +165,7 @@ export const pizzaService = {
   },
 
   deletePizza: async (pizzaId: string): Promise<void> => {
-    await api.delete("/deletePizza", {
+    await api.delete("/api/admin/deletePizza", {
       data: { pizzaId },
     });
   },

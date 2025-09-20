@@ -1,6 +1,6 @@
 import api from "@/services/api";
 
-export type PizzaSize = "SMALL" | "MEDIUM" | "LARGE";
+export type PizzaSize = "MEDIUM" | "LARGE" | "SUPER_SIZE";
 
 export type ComboItem = {
   pizzaId: string;
@@ -14,7 +14,15 @@ export type ComboFormData = {
   name: string;
   description: string;
   discount: number;
-  pizzas: {
+  comboItems?: {
+    pizzaId?: string;
+    otherItemId?: string;
+    quantity: number;
+    itemType: 'PIZZA' | 'OTHER_ITEM';
+    size?: PizzaSize;
+  }[];
+  // Backward compatibility
+  pizzas?: {
     pizzaId: string;
     quantity: number;
     size: PizzaSize;
@@ -29,7 +37,7 @@ export type BackendCombo = {
   imageUrl: string;
   discount: string;
   price: string;
-  pizzas: Array<{
+  pizzas?: Array<{
     pizzaId: string;
     pizza: {
       id: string;
@@ -38,6 +46,23 @@ export type BackendCombo = {
     };
     size: string;
     quantity: number;
+  }>;
+  comboItems?: Array<{
+    pizzaId?: string;
+    otherItemId?: string;
+    pizza?: {
+      id: string;
+      name: string;
+      sizes: Record<string, number>;
+    };
+    otherItem?: {
+      id: string;
+      name: string;
+      price: number;
+    };
+    size?: string;
+    quantity: number;
+    itemType: 'PIZZA' | 'OTHER_ITEM';
   }>;
 };
 
@@ -59,7 +84,7 @@ export const comboService = {
   // Get all pizzas
   async getAllPizzas(): Promise<{ message: string; pizzas: Pizza[] }> {
     try {
-      const response = await api.get("/getAllPizzas");
+      const response = await api.get("/api/admin/getAllPizzas");
       return response.data;
     } catch (error) {
       console.error("Error fetching pizzas:", error);
@@ -70,7 +95,7 @@ export const comboService = {
   // Get all combos
   getAllCombos: async (): Promise<BackendCombo[]> => {
     try {
-      const response = await api.get<BackendCombo[]>("/getComboOffer");
+      const response = await api.get<BackendCombo[]>("/api/admin/getComboOffer");
       console.log("Raw combo response:", response.data);
       // The response is already an array of combos
       return response.data || [];
@@ -92,7 +117,14 @@ export const comboService = {
       formData.append("name", data.name);
       formData.append("description", data.description);
       formData.append("discount", data.discount.toString());
-      formData.append("pizzas", JSON.stringify(data.pizzas));
+      
+      // Send data in the new format but maintain backward compatibility
+      if (data.comboItems) {
+        formData.append("comboItems", JSON.stringify(data.comboItems));
+      }
+      if (data.pizzas) {
+        formData.append("pizzas", JSON.stringify(data.pizzas));
+      }
       
       // Add manual price if provided
       if (data.manualPrice !== undefined) {
@@ -110,7 +142,7 @@ export const comboService = {
       });
 
       const response = await api.post<{ data: BackendCombo }>(
-        "/addComboOffer",
+        "/api/admin/addComboOffer",
         formData,
         {
           headers: {
@@ -131,7 +163,7 @@ export const comboService = {
       if (response.data?.data) {
         return response.data.data;
       } else if (response.data && typeof response.data === 'object' && 'id' in response.data) {
-        return response.data as BackendCombo;
+        return response.data as unknown as BackendCombo;
       } else {
         throw new Error("Invalid response structure");
       }
@@ -163,7 +195,14 @@ export const comboService = {
       formData.append("name", data.name);
       formData.append("description", data.description);
       formData.append("discount", data.discount.toString());
-      formData.append("pizzas", JSON.stringify(data.pizzas));
+      
+      // Send data in the new format but maintain backward compatibility
+      if (data.comboItems) {
+        formData.append("comboItems", JSON.stringify(data.comboItems));
+      }
+      if (data.pizzas) {
+        formData.append("pizzas", JSON.stringify(data.pizzas));
+      }
 
       // Add manual price if provided
       if (data.manualPrice !== undefined) {
@@ -179,7 +218,7 @@ export const comboService = {
 
       // Remove the ID from URL path since backend expects it in the body
       const response = await api.put<{ data: BackendCombo }>(
-        "/editComboOffer",
+        "/api/admin/editComboOffer",
         formData,
         {
           headers: {
@@ -209,7 +248,7 @@ export const comboService = {
   // Delete combo
   deleteCombo: async (comboId: string): Promise<void> => {
     try {
-      await api.delete("/deleteComboOffer", {
+      await api.delete("/api/admin/deleteComboOffer", {
         data: { comboId },
       });
     } catch (error) {

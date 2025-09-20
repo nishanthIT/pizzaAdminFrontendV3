@@ -42,6 +42,11 @@ interface OrderDetails {
     pizzaId?: string;
     comboId?: string;
     otherItemId?: string;
+    comboStyleItemId?: string; // Add combo style item ID
+    sauce?: string; // Add sauce field
+    selectedSidesNames?: string; // Add selected sides (JSON string)
+    selectedDrinksNames?: string; // Add selected drinks (JSON string)
+    isMealDeal?: boolean; // Add meal deal flag
     // Direct fields on the item
     name?: string;
     title?: string;
@@ -50,6 +55,10 @@ interface OrderDetails {
       imageUrl?: string;
     };
     combo?: {
+      name: string;
+      imageUrl?: string;
+    };
+    comboStyleItem?: { // Add combo style item relation
       name: string;
       imageUrl?: string;
     };
@@ -72,6 +81,112 @@ interface OrderDetails {
     }>;
   }>;
 }
+
+// Component to show combo-style item modifications (sauce, sides, drinks)
+const ComboStyleModifications = ({ item, isMobile, sidesAndDrinksLookup }: {
+  item: any,
+  isMobile: boolean,
+  sidesAndDrinksLookup: { [key: string]: string }
+}) => {
+  const containerClass = isMobile ? 'mt-2 space-y-2' : 'text-sm space-y-2';
+  const textSize = isMobile ? 'text-xs' : 'text-sm';
+  const badgeSize = isMobile ? 'text-xs px-1.5 py-0.5' : 'text-xs px-2 py-1';
+
+  // Parse selected items
+  let selectedSidesNames = [];
+  let selectedDrinksNames = [];
+  
+  try {
+    if (item.selectedSidesNames) {
+      if (typeof item.selectedSidesNames === 'string') {
+        selectedSidesNames = JSON.parse(item.selectedSidesNames);
+      } else if (Array.isArray(item.selectedSidesNames)) {
+        selectedSidesNames = item.selectedSidesNames;
+      }
+    }
+  } catch (e) {
+    console.error('Error parsing selectedSidesNames:', e);
+  }
+  
+  try {
+    if (item.selectedDrinksNames) {
+      if (typeof item.selectedDrinksNames === 'string') {
+        selectedDrinksNames = JSON.parse(item.selectedDrinksNames);
+      } else if (Array.isArray(item.selectedDrinksNames)) {
+        selectedDrinksNames = item.selectedDrinksNames;
+      }
+    }
+  } catch (e) {
+    console.error('Error parsing selectedDrinksNames:', e);
+  }
+
+  const hasModifications = item.sauce || selectedSidesNames.length > 0 || selectedDrinksNames.length > 0;
+
+  if (!hasModifications) {
+    return (
+      <div className={`${textSize} text-gray-500`}>
+        No modifications available
+      </div>
+    );
+  }
+
+  return (
+    <div className={containerClass}>
+      {/* Show sauce */}
+      {item.sauce && (
+        <div>
+          <p className={`font-medium ${textSize} mb-1 text-gray-700`}>Sauce:</p>
+          <span className={`bg-red-50 text-red-700 border border-red-200 ${badgeSize} rounded-md inline-flex items-center font-medium`}>
+            {item.sauce}
+          </span>
+        </div>
+      )}
+
+      {/* Show selected sides */}
+      {selectedSidesNames.length > 0 && (
+        <div>
+          <p className={`font-medium ${textSize} mb-1 text-gray-700`}>Sides:</p>
+          <div className="flex flex-wrap gap-1">
+            {selectedSidesNames.map((side: any, idx: number) => (
+              <span
+                key={`side-${idx}`}
+                className={`bg-blue-50 text-blue-700 border border-blue-200 ${badgeSize} rounded-md inline-flex items-center font-medium`}
+              >
+                {sidesAndDrinksLookup[side] || side}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Show selected drinks */}
+      {selectedDrinksNames.length > 0 && (
+        <div>
+          <p className={`font-medium ${textSize} mb-1 text-gray-700`}>Drinks:</p>
+          <div className="flex flex-wrap gap-1">
+            {selectedDrinksNames.map((drink: any, idx: number) => (
+              <span
+                key={`drink-${idx}`}
+                className={`bg-green-50 text-green-700 border border-green-200 ${badgeSize} rounded-md inline-flex items-center font-medium`}
+              >
+                {sidesAndDrinksLookup[drink] || drink}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Show if it's a meal deal */}
+      {item.isMealDeal && (
+        <div>
+          <span className={`bg-purple-50 text-purple-700 border border-purple-200 ${badgeSize} rounded-md inline-flex items-center font-medium`}>
+            Meal Deal
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Component to show pizza modifications with comparison to original
 const PizzaModifications = ({ item, onFetchPizza, isMobile }: {
@@ -177,6 +292,7 @@ const OrderDetails = () => {
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [pizzaDetails, setPizzaDetails] = useState<{ [key: string]: any }>({});
+  const [sidesAndDrinks, setSidesAndDrinks] = useState<{ [key: string]: any }>({});
 
   // Fetch pizza details for modification comparison
   const fetchPizzaDetails = async (pizzaId: string) => {
@@ -234,11 +350,40 @@ const OrderDetails = () => {
     }
   };
 
+  // Fetch sides and drinks details for name lookup
+  const fetchSidesAndDrinks = async () => {
+    try {
+      // Fetch sides and drinks from the combo style items endpoint
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/getComboStyleItemSides`);
+      const data = await response.json();
+      
+      const lookup: { [key: string]: string } = {};
+      
+      // Process sides
+      if (data.sides) {
+        data.sides.forEach((side: any) => {
+          lookup[side.id] = side.name;
+        });
+      }
+      
+      // Process drinks
+      if (data.drinks) {
+        data.drinks.forEach((drink: any) => {
+          lookup[drink.id] = drink.name;
+        });
+      }
+      
+      setSidesAndDrinks(lookup);
+    } catch (error) {
+      console.error("Error fetching sides and drinks:", error);
+    }
+  };
+
   useEffect(() => {
     const fetchOrderDetails = async () => {
       try {
         // Replace fetch with api instance
-        const response = await api.get(`/getOrderDetails/${id}`);
+        const response = await api.get(`/api/admin/getOrderDetails/${id}`); // Corrected path
         setOrder(response.data);
         console.log("Order Details:", response.data);
       } catch (error) {
@@ -249,6 +394,7 @@ const OrderDetails = () => {
     };
 
     fetchOrderDetails();
+    fetchSidesAndDrinks(); // Fetch sides and drinks data for lookup
   }, [id]);
 
   if (loading) {
@@ -368,7 +514,12 @@ const OrderDetails = () => {
               {order.orderItems.map((item) => {
                 // Get item name with fallback
                 const getItemName = () => {
-                  if (item.isCombo) {
+                  if (item.comboStyleItemId && item.comboStyleItem) {
+                    // For combo-style items, show the item name with size
+                    const baseName = item.comboStyleItem.name || 'Combo Style Item';
+                    const size = item.size;
+                    return `${baseName} (${size})`;
+                  } else if (item.isCombo) {
                     return item.combo?.name || 'Combo Item';
                   } else if (item.isOtherItem) {
                     return item.otherItem?.name ||
@@ -387,11 +538,13 @@ const OrderDetails = () => {
                       <div className="flex items-start gap-3 mb-3">
                         <img
                           src={
-                            item.isCombo
-                              ? `${API_IMG_URL}/images/combo-${item.comboId}.png`
-                              : item.isOtherItem
-                                ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
-                                : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
+                            item.comboStyleItemId
+                              ? `${API_IMG_URL}/images/combostyle-${item.comboStyleItemId}.png`
+                              : item.isCombo
+                                ? `${API_IMG_URL}/images/combo-${item.comboId}.png`
+                                : item.isOtherItem
+                                  ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
+                                  : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
                           }
                           alt={getItemName()}
                           className="h-12 w-12 rounded-md object-cover flex-shrink-0"
@@ -420,7 +573,15 @@ const OrderDetails = () => {
                       </div>
 
                       {/* Mobile Modifications */}
-                      {!item.isCombo && !item.isOtherItem && (
+                      {item.comboStyleItemId ? (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <ComboStyleModifications
+                            item={item}
+                            isMobile={true}
+                            sidesAndDrinksLookup={sidesAndDrinks}
+                          />
+                        </div>
+                      ) : !item.isCombo && !item.isOtherItem ? (
                         <div className="mt-3 pt-3 border-t border-gray-100">
                           <PizzaModifications
                             item={item}
@@ -428,8 +589,7 @@ const OrderDetails = () => {
                             isMobile={true}
                           />
                         </div>
-                      )}
-                      {(item.isCombo || item.isOtherItem) && (
+                      ) : (
                         <div className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
                           No modifications available
                         </div>
@@ -457,7 +617,12 @@ const OrderDetails = () => {
                 {order.orderItems.map((item) => {
                   // Get item name with fallback
                   const getItemName = () => {
-                    if (item.isCombo) {
+                    if (item.comboStyleItemId && item.comboStyleItem) {
+                      // For combo-style items, show the item name with size
+                      const baseName = item.comboStyleItem.name || 'Combo Style Item';
+                      const size = item.size;
+                      return `${baseName} (${size})`;
+                    } else if (item.isCombo) {
                       return item.combo?.name || 'Combo Item';
                     } else if (item.isOtherItem) {
                       return item.otherItem?.name ||
@@ -476,11 +641,13 @@ const OrderDetails = () => {
                         <div className="flex items-center gap-3">
                           <img
                             src={
-                              item.isCombo
-                                ? `${API_IMG_URL}/images/combo-${item.comboId}.png`
-                                : item.isOtherItem
-                                  ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
-                                  : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
+                              item.comboStyleItemId
+                                ? `${API_IMG_URL}/images/combo-style-${item.comboStyleItemId}.png`
+                                : item.isCombo
+                                  ? `${API_IMG_URL}/images/combo-${item.comboId}.png`
+                                  : item.isOtherItem
+                                    ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
+                                    : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
                             }
                             alt={getItemName()}
                             className="h-10 w-10 rounded-md object-cover"
@@ -498,14 +665,19 @@ const OrderDetails = () => {
                       <TableCell>{item.size}</TableCell>
                       <TableCell>{item.quantity}</TableCell>
                       <TableCell>
-                        {!item.isCombo && !item.isOtherItem && (
+                        {item.comboStyleItemId ? (
+                          <ComboStyleModifications
+                            item={item}
+                            isMobile={false}
+                            sidesAndDrinksLookup={sidesAndDrinks}
+                          />
+                        ) : !item.isCombo && !item.isOtherItem ? (
                           <PizzaModifications
                             item={item}
                             onFetchPizza={fetchPizzaDetails}
                             isMobile={false}
                           />
-                        )}
-                        {(item.isCombo || item.isOtherItem) && (
+                        ) : (
                           <div className="text-sm text-gray-500">
                             No modifications available
                           </div>

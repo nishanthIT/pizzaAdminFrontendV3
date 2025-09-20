@@ -36,7 +36,8 @@ type ComboItem = {
   name: string;
   price: number;
   quantity: number;
-  size: PizzaSize;
+  size?: PizzaSize;
+  itemType: 'PIZZA' | 'OTHER_ITEM';
 };
 
 type Combo = {
@@ -81,52 +82,116 @@ const Combos = () => {
     loadCombos();
   }, []);
 
-  const loadCombos = async () => {
-    try {
-      setIsLoading(true);
-      const data = await comboService.getAllCombos();
-      console.log("Received combo data:", data);
+ const loadCombos = async () => {
+  try {
+    setIsLoading(true);
+    const data = await comboService.getAllCombos();
+    console.log("Received combo data:", data);
 
-      const processedCombos = data.map((combo: BackendCombo) => {
-        const items = combo.pizzas.map((p) => ({
-          id: p.pizzaId, // Update to match the response structure
-          name: p.pizza?.name || "", // Add optional chaining
-          price: p.pizza?.sizes?.[p.size] || 0,
-          quantity: p.quantity,
-          size: p.size as PizzaSize,
-        }));
+    const processedCombos = data.map((combo: BackendCombo) => {
+      const items: ComboItem[] = [];
 
-        // Calculate actual total price of items
-        const actualTotalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-        // Determine if this is manual pricing (discount = 0) or percentage pricing
-        const isManualPricing = Number(combo.discount) === 0;
+      console.log("Processing combo:", combo.id, combo);
+      
+      // FIXED: Only use the new comboItems structure, not both
+      // Check if we have the new structure first
+      if (combo.comboItems && Array.isArray(combo.comboItems) && combo.comboItems.length > 0) {
+        console.log("Processing comboItems for combo:", combo.id, combo.comboItems);
         
-        return {
-          id: combo.id,
-          name: combo.name,
-          description: combo.description,
-          image: combo.imageUrl, // Use imageUrl directly from the response
-          items,
-          discount: Number(combo.discount),
-          totalPrice: actualTotalPrice, // Always use actual calculated total
-          finalPrice: Number(combo.price), // This is either discounted price or manual price
-        };
-      });
+        const comboItemItems = combo.comboItems.map((item) => {
+          let price = 0;
+          let name = "";
+          
+          if (item.itemType === 'PIZZA' && item.pizza) {
+            // FIXED: Use unitPrice instead of calculatedPrice, fallback to sizes if needed
+            if (item.unitPrice) {
+              price = Number(item.unitPrice);
+            } else if (item.pizza.sizes && item.size) {
+              // Parse sizes if it's a string
+              const sizes = typeof item.pizza.sizes === 'string' 
+                ? JSON.parse(item.pizza.sizes) 
+                : item.pizza.sizes;
+              price = sizes[item.size] || 0;
+            }
+            name = item.pizza.name || "";
+          } else if (item.itemType === 'OTHER_ITEM' && item.otherItem) {
+            // FIXED: Use unitPrice for other items too, fallback to item price
+            price = Number(item.unitPrice) || Number(item.otherItem.price) || 0;
+            name = item.otherItem.name || "";
+          }
+          
+          return {
+            id: item.pizzaId || item.otherItemId || item.id,
+            name,
+            price,
+            quantity: Number(item.quantity) || 1,
+            size: item.size as PizzaSize | undefined,
+            itemType: item.itemType as 'PIZZA' | 'OTHER_ITEM',
+          };
+        });
+        
+        items.push(...comboItemItems);
+      } 
+      // FIXED: Only fall back to old pizzas structure if no comboItems exist
+      else if (combo.pizzas && Array.isArray(combo.pizzas) && combo.pizzas.length > 0) {
+        console.log("Processing legacy pizzas for combo:", combo.id, combo.pizzas);
+        
+        const pizzaItems = combo.pizzas.map((p) => {
+          let price = 0;
+          if (p.pizza?.sizes && p.size) {
+            // Parse sizes if it's a string
+            const sizes = typeof p.pizza.sizes === 'string' 
+              ? JSON.parse(p.pizza.sizes) 
+              : p.pizza.sizes;
+            price = sizes[p.size] || 0;
+          }
+          
+          return {
+            id: p.pizzaId,
+            name: p.pizza?.name || "",
+            price,
+            quantity: Number(p.quantity) || 1,
+            size: p.size as PizzaSize,
+            itemType: 'PIZZA' as const,
+          };
+        });
+        
+        items.push(...pizzaItems);
+      }
 
-      console.log("Processed combos:", processedCombos);
-      setCombos(processedCombos);
-    } catch (error) {
-      console.error("Error loading combos:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load combos",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      console.log("Final items for combo:", combo.id, items);
+
+      // Calculate actual total price of items
+      const actualTotalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+      // Determine if this is manual pricing (discount = 0) or percentage pricing
+      const isManualPricing = Number(combo.discount) === 0;
+      
+      return {
+        id: combo.id,
+        name: combo.name,
+        description: combo.description,
+        image: combo.imageUrl,
+        items,
+        discount: Number(combo.discount),
+        totalPrice: actualTotalPrice,
+        finalPrice: Number(combo.price),
+      };
+    });
+
+    console.log("Processed combos:", processedCombos);
+    setCombos(processedCombos);
+  } catch (error) {
+    console.error("Error loading combos:", error);
+    toast({
+      title: "Error",
+      description: "Failed to load combos",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};  
 
   const handleAddCombo = async () => {
     try {
@@ -175,10 +240,11 @@ const Combos = () => {
         name: newCombo.name,
         description: newCombo.description,
         discount: pricingMode === 'percentage' ? newCombo.discount : 0,
-        pizzas: newCombo.items.map((item) => ({
-          pizzaId: item.id,
+        comboItems: newCombo.items.map((item) => ({
+          ...(item.itemType === 'PIZZA' ? { pizzaId: item.id } : { otherItemId: item.id }),
           quantity: item.quantity,
-          size: item.size,
+          itemType: item.itemType,
+          ...(item.size && { size: item.size }),
         })),
         ...(pricingMode === 'manual' && newCombo.manualPrice && {
           manualPrice: newCombo.manualPrice
@@ -249,21 +315,10 @@ const Combos = () => {
     }
   };
 
-  const handleAddItem = (
-    item: { id: string; name: string; price: number; quantity: number },
-    size: PizzaSize
-  ) => {
-    const newItem = {
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      quantity: item.quantity,
-      size: size,
-    };
-
+  const handleAddItem = (item: ComboItem) => {
     setNewCombo((prev) => ({
       ...prev,
-      items: [...prev.items, newItem],
+      items: [...prev.items, item],
     }));
   };
 
@@ -487,20 +542,19 @@ const Combos = () => {
               <div className="space-y-4">
                 <Label>Add Items to Combo</Label>
                 <ComboItemSelector
-                  onAddItem={(item) => handleAddItem(item, "MEDIUM")}
-                  showSizeSelector={true}
-                  onAddItemWithSize={handleAddItem}
+                  onAddItemWithType={handleAddItem}
                 />
                 <div className="space-y-2">
-                  {newCombo.items.map((item) => (
+                  {newCombo.items.map((item, index) => (
                     <div
-                      key={item.id}
+                      key={`${item.id}-${index}`}
                       className="flex items-center justify-between p-2 border rounded"
                     >
                       <div className="flex flex-col">
                         <span className="font-medium">{item.name}</span>
                         <span className="text-sm text-gray-500">
-                          Size: {item.size}
+                          Type: {item.itemType === 'PIZZA' ? 'Pizza' : 'Other Item'}
+                          {item.size && ` | Size: ${item.size}`}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -569,19 +623,27 @@ const Combos = () => {
             <CardContent>
               <div className="space-y-2">
                 <p className="font-medium">Items:</p>
-                {combo.items.map((item) => (
-                  <div key={item.id} className="flex justify-between text-sm">
+                {combo.items.map((item, index) => (
+                  <div key={`${item.id}-${index}`} className="flex justify-between text-sm">
                     <span>
-                      {item.name} ({item.size}) x {item.quantity}
+                      {item.name} 
+                      {item.itemType === 'PIZZA' && item.size ? ` (${item.size})` : ''} 
+                      x {item.quantity}
                     </span>
                     <span>£{(item.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
-                <div className="flex justify-between font-medium pt-2 border-t">
+                {/* <div className="flex justify-between font-medium pt-2 border-t">
                   <span>
                     {combo.discount > 0 ? "Total Before Discount:" : "Items Total:"}
                   </span>
                   <span>£{combo.totalPrice.toFixed(2)}</span>
+                </div> */}
+                 <div className="flex justify-between font-medium pt-2 border-t">
+                  <span>
+                    {combo.discount > 0 ? "Total Before Discount:" : "Items Total:"}
+                  </span>
+                  <span>£{combo.finalPrice.toFixed(2)}</span>
                 </div>
                 {combo.discount > 0 && (
                   <div className="flex justify-between text-green-600 font-medium">

@@ -12,6 +12,12 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = getStoredToken();
+    console.log("Making API request:", {
+      url: config.url,
+      method: config.method,
+      hasToken: !!token,
+      token: token ? `${token.substring(0, 10)}...` : 'none'
+    });
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -23,8 +29,19 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log("API response success:", {
+      url: response.config.url,
+      status: response.status
+    });
+    return response;
+  },
   (error) => {
+    console.log("API response error:", {
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message
+    });
     if (error.response?.status === 401) {
       localStorage.removeItem("adminToken");
       window.location.href = "/login";

@@ -14,7 +14,7 @@ interface CategoryResponse {
 export const categoryService = {
   getCategories: async (): Promise<Category[]> => {
     try {
-      const response = await api.get<CategoryResponse>("/getCategories");
+      const response = await api.get<CategoryResponse>("/api/admin/getCategories");
       // Access the data property from the response
       return response.data.data || [];
     } catch (error) {
@@ -25,7 +25,7 @@ export const categoryService = {
 
   addCategory: async (category: Omit<Category, "id">): Promise<Category> => {
     try {
-      const response = await api.post("/addCategory", category);
+      const response = await api.post("/api/admin/addCategory", category);
       return response.data;
     } catch (error) {
       console.error("Error adding category:", error);
@@ -35,7 +35,7 @@ export const categoryService = {
 
   updateCategory: async (category: Category): Promise<Category> => {
     try {
-      const response = await api.put("/updateCategory", category);
+      const response = await api.put("/api/admin/updateCategory", category);
       return response.data;
     } catch (error) {
       console.error("Error updating category:", error);
@@ -45,7 +45,7 @@ export const categoryService = {
 
   deleteCategory: async (id: string): Promise<void> => {
     try {
-      await api.delete("/deleteCategory", { data: { id } });
+      await api.delete("/api/admin/deleteCategory", { data: { id } });
     } catch (error) {
       console.error("Error deleting category:", error);
       throw new Error("Failed to delete category");

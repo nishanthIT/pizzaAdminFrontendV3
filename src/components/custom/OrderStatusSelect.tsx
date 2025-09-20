@@ -26,7 +26,7 @@ const OrderStatusSelect = ({
   const handleStatusChange = async (newStatus: string) => {
     setIsLoading(true);
     try {
-      const response = await api.put(`/changeOrderStatus/${orderId}`, {
+      const response = await api.put(`/api/admin/changeOrderStatus/${orderId}`, {
         status: newStatus,
       });
 

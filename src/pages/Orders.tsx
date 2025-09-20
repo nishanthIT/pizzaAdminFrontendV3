@@ -918,7 +918,7 @@ const Orders = () => {
       }
       setError(null);
 
-      const response = await api.get("/getAllOrders");
+      const response = await api.get("/api/admin/getAllOrders"); // Corrected path
       
       if (response.data) {
         setOrders(response.data);
@@ -1004,7 +1004,7 @@ const Orders = () => {
     if (autoRefresh) {
       intervalRef.current = setInterval(() => {
         fetchOrders(false, true);
-      }, 5000);
+      }, 30000);
     }
 
     return () => {
@@ -1021,7 +1021,7 @@ const Orders = () => {
       if (newValue) {
         intervalRef.current = setInterval(() => {
           fetchOrders(false, true);
-        }, 5000);
+        }, 30000);
       } else {
         if (intervalRef.current) {
           clearInterval(intervalRef.current);

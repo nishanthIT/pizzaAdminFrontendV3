@@ -7,6 +7,7 @@ export interface OtherItem {
   price: number;
   imageUrl: string;
   categoryId: string;
+  availableSauces?: string; // JSON array of available sauces for items like Peri Peri Chicken
   category?: {
     id: string;
     name: string;
@@ -16,7 +17,7 @@ export interface OtherItem {
 export const otherItemService = {
   async getAllOtherItems(): Promise<OtherItem[]> {
     try {
-      const response = await api.get<OtherItem[]>("/getAllOtherItems");
+      const response = await api.get<OtherItem[]>("/api/admin/getAllOtherItems");
       console.log("Raw other items response:", response.data);
       return response.data || [];
     } catch (error) {
@@ -31,6 +32,7 @@ export const otherItemService = {
     price: number;
     category: string;
     image: File;
+    availableSauces?: string[];
   }): Promise<OtherItem> {
     try {
       const formData = new FormData();
@@ -39,9 +41,12 @@ export const otherItemService = {
       formData.append("price", data.price.toString());
       formData.append("category", data.category);
       formData.append("image", data.image);
+      if (data.availableSauces) {
+        formData.append("availableSauces", JSON.stringify(data.availableSauces));
+      }
 
       const response = await api.post<{ data: OtherItem }>(
-        "/addOtherItem",
+        "/api/admin/addOtherItem",
         formData,
         {
           headers: {
@@ -64,6 +69,7 @@ export const otherItemService = {
     price: number;
     category: string;
     image?: File;
+    availableSauces?: string[];
   }): Promise<OtherItem> {
     try {
       const formData = new FormData();
@@ -75,6 +81,9 @@ export const otherItemService = {
       if (data.image) {
         formData.append("image", data.image);
       }
+      if (data.availableSauces) {
+        formData.append("availableSauces", JSON.stringify(data.availableSauces));
+      }
 
       console.log("Sending update data:", {
         id: data.id,
@@ -83,7 +92,7 @@ export const otherItemService = {
         formDataEntries: Array.from(formData.entries()),
       });
 
-      const response = await api.put<OtherItem>("/updateOtherItem", formData, {
+      const response = await api.put<OtherItem>("/api/admin/updateOtherItem", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -103,7 +112,7 @@ export const otherItemService = {
 
   async deleteOtherItem(id: string): Promise<void> {
     try {
-      await api.delete(`/deleteOtherItem/${id}`);
+      await api.delete(`/api/admin/deleteOtherItem/${id}`);
     } catch (error) {
       console.error("Error deleting other item:", error);
       throw new Error("Failed to delete other item");

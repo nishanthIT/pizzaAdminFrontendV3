@@ -15,7 +15,7 @@ interface IngredientResponse {
 export const ingredientService = {
   getIngredients: async (): Promise<Ingredient[]> => {
     try {
-      const response = await api.get<IngredientResponse>("/getIngredients");
+      const response = await api.get<IngredientResponse>("/api/admin/getIngredients");
       return Array.isArray(response.data.data) ? response.data.data : [];
     } catch (error) {
       console.error("Error fetching ingredients:", error);
@@ -28,7 +28,7 @@ export const ingredientService = {
   ): Promise<Ingredient> => {
     try {
       const response = await api.post<IngredientResponse>(
-        "/addIngredient",
+        "/api/admin/addIngredient",
         ingredient
       );
       return response.data.data as Ingredient;
@@ -43,7 +43,7 @@ export const ingredientService = {
   ): Promise<Ingredient> => {
     try {
       const response = await api.put<IngredientResponse>(
-        "/updateIngredient",
+        "/api/admin/updateIngredient",
         ingredient
       );
       return response.data.data as Ingredient;
@@ -59,7 +59,7 @@ export const ingredientService = {
   ): Promise<Ingredient> => {
     try {
       const response = await api.put<IngredientResponse>(
-        "/updateStatusIngredient",
+        "/api/admin/updateStatusIngredient",
         {
           id,
           status,
@@ -74,7 +74,7 @@ export const ingredientService = {
 
   deleteIngredient: async (id: string): Promise<void> => {
     try {
-      await api.delete("/deleteIngredient", { data: { id } });
+      await api.delete("/api/admin/deleteIngredient", { data: { id } });
     } catch (error) {
       console.error("Error deleting ingredient:", error);
       throw new Error("Failed to delete ingredient");

@@ -17,6 +17,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import { AuthProvider } from "./contexts/AuthContext";
 import OtherItems from "./pages/OtherItems";
+import ComboStyleItems from "./pages/ComboStyleItems";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,10 @@ const App = () => (
                             <Route
                               path="/other-items"
                               element={<OtherItems />}
+                            />
+                            <Route
+                              path="/combo-style-items"
+                              element={<ComboStyleItems />}
                             />
                             <Route path="*" element={<NotFound />} />
                           </Routes>

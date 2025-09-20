@@ -496,6 +496,7 @@ const OtherItems = () => {
   const handleEditItem = (item: OtherItem) => {
     setIsEditing(true);
     setEditingItemId(item.id);
+    
     setNewItem({
       name: item.name,
       description: item.description || "",
@@ -693,6 +694,7 @@ const OtherItems = () => {
                   </SelectContent>
                 </Select>
               </div>
+              
               <div>
                 <Label htmlFor="image">Item Image</Label>
                 {newItem.imageUrl && !newItem.image && (

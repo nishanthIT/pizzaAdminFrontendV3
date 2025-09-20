@@ -57,7 +57,7 @@ interface PizzaIngredient {
 }
 
 interface PizzaSize {
-  size: "small" | "medium" | "large";
+  size: "medium" | "large" | "super_size";
   price: number;
 }
 
@@ -90,9 +90,9 @@ const Pizzas = () => {
   // Form states
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [smallPrice, setSmallPrice] = useState("");
   const [mediumPrice, setMediumPrice] = useState("");
   const [largePrice, setLargePrice] = useState("");
+  const [superSizePrice, setSuperSizePrice] = useState("");
   const [category, setCategory] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [Loading, setLoading] = useState(false);
@@ -139,9 +139,9 @@ const Pizzas = () => {
   const handleAddNew = () => {
     setEditingPizza(null);
     setName("");
-    setSmallPrice("");
     setMediumPrice("");
     setLargePrice("");
+    setSuperSizePrice("");
     setCategory("");
     setImageUrl("");
     setSelectedToppings([]);
@@ -154,9 +154,9 @@ const Pizzas = () => {
     setEditingPizza(pizza);
     setName(pizza.name);
     setDescription(pizza.description || "");
-    setSmallPrice(pizza.sizes.SMALL.toString());
     setMediumPrice(pizza.sizes.MEDIUM.toString());
     setLargePrice(pizza.sizes.LARGE.toString());
+    setSuperSizePrice(pizza.sizes.SUPER_SIZE.toString());
     setCategory(pizza.categoryId);
     setImageUrl(pizza.imageUrl || "");
 
@@ -266,7 +266,7 @@ const Pizzas = () => {
 
   const handleSave = async () => {
     setLoading(true);
-    if (!name || !smallPrice || !mediumPrice || !largePrice || !category) {
+    if (!name || !mediumPrice || !largePrice || !superSizePrice || !category) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -276,9 +276,9 @@ const Pizzas = () => {
     }
 
     const sizes = {
-      SMALL: parseFloat(smallPrice),
       MEDIUM: parseFloat(mediumPrice),
       LARGE: parseFloat(largePrice),
+      SUPER_SIZE: parseFloat(superSizePrice),
     };
 
     try {
@@ -398,9 +398,9 @@ const Pizzas = () => {
                 <TableHead>Image</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Small (£)</TableHead>
                 <TableHead>Medium (£)</TableHead>
                 <TableHead>Large (£)</TableHead>
+                <TableHead>Super Size (£)</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -430,14 +430,14 @@ const Pizzas = () => {
                         ":",
                         pizza.sizes
                       );
-                      return `£${Number(pizza.sizes?.SMALL || 0).toFixed(2)}`;
+                      return `£${Number(pizza.sizes?.MEDIUM || 0).toFixed(2)}`;
                     })()}
                   </TableCell>
                   <TableCell>
-                    £{Number(pizza.sizes?.MEDIUM || 0).toFixed(2)}
+                    £{Number(pizza.sizes?.LARGE || 0).toFixed(2)}
                   </TableCell>
                   <TableCell>
-                    £{Number(pizza.sizes?.LARGE || 0).toFixed(2)}
+                    £{Number(pizza.sizes?.SUPER_SIZE || 0).toFixed(2)}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -485,19 +485,6 @@ const Pizzas = () => {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="small-price">Small Size Price (£)</Label>
-                  <Input
-                    id="small-price"
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={smallPrice}
-                    onChange={(e) => setSmallPrice(e.target.value)}
-                    placeholder="e.g., 9.99"
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="medium-price">Medium Size Price (£)</Label>
                   <Input
                     id="medium-price"
@@ -506,7 +493,7 @@ const Pizzas = () => {
                     min="0"
                     value={mediumPrice}
                     onChange={(e) => setMediumPrice(e.target.value)}
-                    placeholder="e.g., 12.99"
+                    placeholder="e.g., 9.99"
                   />
                 </div>
 
@@ -519,6 +506,19 @@ const Pizzas = () => {
                     min="0"
                     value={largePrice}
                     onChange={(e) => setLargePrice(e.target.value)}
+                    placeholder="e.g., 12.99"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="super-size-price">Super Size Price (£)</Label>
+                  <Input
+                    id="super-size-price"
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={superSizePrice}
+                    onChange={(e) => setSuperSizePrice(e.target.value)}
                     placeholder="e.g., 15.99"
                   />
                 </div>
@@ -559,7 +559,7 @@ const Pizzas = () => {
                 />
                 {imageUrl && (
                   <img
-                    src={`${API_URL}/images/pizza-${editingPizza?.id}.png`}
+                    src={`${API_URL}/api/images/pizza-${editingPizza?.id}.png`}
                     alt={editingPizza?.name}
                     className="mt-2 w-full h-32 object-cover rounded-md"
                   />
