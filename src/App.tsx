@@ -18,6 +18,7 @@ import Login from "./pages/Login";
 import { AuthProvider } from "./contexts/AuthContext";
 import OtherItems from "./pages/OtherItems";
 import ComboStyleItems from "./pages/ComboStyleItems";
+import UserChoices from "./pages/UserChoices";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,10 @@ const App = () => (
                             <Route
                               path="/combo-style-items"
                               element={<ComboStyleItems />}
+                            />
+                            <Route
+                              path="/user-choices"
+                              element={<UserChoices />}
                             />
                             <Route path="*" element={<NotFound />} />
                           </Routes>

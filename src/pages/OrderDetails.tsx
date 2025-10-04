@@ -43,10 +43,21 @@ interface OrderDetails {
     comboId?: string;
     otherItemId?: string;
     comboStyleItemId?: string; // Add combo style item ID
+    userChoiceId?: string; // Add user choice ID
     sauce?: string; // Add sauce field
     selectedSidesNames?: string; // Add selected sides (JSON string)
     selectedDrinksNames?: string; // Add selected drinks (JSON string)
     isMealDeal?: boolean; // Add meal deal flag
+    userChoiceDetails?: { // Add user choice details
+      name: string;
+      description?: string;
+      selectedItems: {
+        [categoryType: string]: Array<{
+          name: string;
+          quantity: number;
+        }>;
+      };
+    };
     // Direct fields on the item
     name?: string;
     title?: string;
@@ -59,6 +70,10 @@ interface OrderDetails {
       imageUrl?: string;
     };
     comboStyleItem?: { // Add combo style item relation
+      name: string;
+      imageUrl?: string;
+    };
+    userChoice?: { // Add user choice relation
       name: string;
       imageUrl?: string;
     };
@@ -188,6 +203,65 @@ const ComboStyleModifications = ({ item, isMobile, sidesAndDrinksLookup }: {
   );
 };
 
+// Component to show user choice meal deal selected items
+const UserChoiceDetails = ({ item, isMobile }: {
+  item: any,
+  isMobile: boolean
+}) => {
+  const containerClass = isMobile ? 'mt-2 space-y-2' : 'text-sm space-y-2';
+  const textSize = isMobile ? 'text-xs' : 'text-sm';
+  const badgeSize = isMobile ? 'text-xs px-1.5 py-0.5' : 'text-xs px-2 py-1';
+
+  if (!item.userChoiceDetails || !item.userChoiceDetails.selectedItems) {
+    return (
+      <div className={`${textSize} text-gray-500`}>
+        No user choice details available
+      </div>
+    );
+  }
+
+  const selectedItems = item.userChoiceDetails.selectedItems;
+  const hasSelectedItems = Object.keys(selectedItems).length > 0;
+
+  if (!hasSelectedItems) {
+    return (
+      <div className={`${textSize} text-gray-500`}>
+        No items selected
+      </div>
+    );
+  }
+
+  return (
+    <div className={containerClass}>
+      {item.userChoiceDetails.description && (
+        <div>
+          <p className={`${textSize} text-gray-600 mb-2`}>
+            {item.userChoiceDetails.description}
+          </p>
+        </div>
+      )}
+
+      {Object.entries(selectedItems).map(([categoryType, items]: [string, any[]]) => (
+        <div key={categoryType}>
+          <p className={`font-medium ${textSize} mb-1 text-gray-700 capitalize`}>
+            {categoryType}:
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {items.map((selectedItem: any, idx: number) => (
+              <span
+                key={`${categoryType}-${idx}`}
+                className={`bg-orange-50 text-orange-700 border border-orange-200 ${badgeSize} rounded-md inline-flex items-center font-medium`}
+              >
+                {selectedItem.name} {selectedItem.quantity > 1 && `(${selectedItem.quantity})`}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 // Component to show pizza modifications with comparison to original
 const PizzaModifications = ({ item, onFetchPizza, isMobile }: {
   item: any,
@@ -197,17 +271,30 @@ const PizzaModifications = ({ item, onFetchPizza, isMobile }: {
   const [originalPizza, setOriginalPizza] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
+  // Don't render if this is part of a user choice meal
+  if (item.userChoiceId || item.userChoiceDetails) {
+    return <div className={`text-xs text-gray-500 ${isMobile ? 'mt-2' : ''}`}>No modifications available</div>;
+  }
+
   useEffect(() => {
-    if (item.pizzaId) {
+    // Check if pizza data is already available in the item
+    if (item.pizza) {
+      setOriginalPizza(item.pizza);
+      return;
+    }
+    
+    // Only fetch pizza details if this is NOT part of a user choice meal and pizza data is not available
+    if (item.pizzaId && !item.userChoiceId && !item.userChoiceDetails && !item.pizza) {
       setLoading(true);
       onFetchPizza(item.pizzaId).then((pizza) => {
         setOriginalPizza(pizza);
         setLoading(false);
       }).catch((error) => {
+        console.error("Error fetching pizza details:", error);
         setLoading(false);
       });
     }
-  }, [item.pizzaId, onFetchPizza]);
+  }, [item.pizzaId, item.pizza, onFetchPizza]);
 
   if (loading) {
     return <div className={`text-xs text-gray-500 ${isMobile ? 'mt-2' : ''}`}>Loading modifications...</div>;
@@ -215,6 +302,52 @@ const PizzaModifications = ({ item, onFetchPizza, isMobile }: {
 
   if (!originalPizza) {
     return <div className={`text-xs text-gray-500 ${isMobile ? 'mt-2' : ''}`}>No modifications available</div>;
+  }
+
+  // Check if we have detailed pizza data with default toppings/ingredients
+  const hasDetailedPizzaData = originalPizza.defaultToppings || originalPizza.defaultIngredients;
+  
+  if (!hasDetailedPizzaData) {
+    // If we only have basic pizza data, just show current toppings without comparison
+    const currentToppings = item.orderToppings?.filter((t: any) => t.include && t.quantity > 0) || [];
+    const currentIngredients = item.orderIngredients?.filter((i: any) => i.include && i.quantity > 0) || [];
+    
+    if (currentToppings.length === 0 && currentIngredients.length === 0) {
+      return <div className={`text-xs text-gray-500 ${isMobile ? 'mt-2' : ''}`}>No modifications available</div>;
+    }
+
+    return (
+      <div className={`text-xs space-y-2 ${isMobile ? 'mt-2' : ''}`}>
+        <div className="font-medium text-gray-700">Base:</div>
+        <div className="text-gray-600">{item.pizzaBase || 'Regular Crust'}</div>
+        
+        {currentToppings.length > 0 && (
+          <>
+            <div className="font-medium text-gray-700">Toppings:</div>
+            <div className="flex flex-wrap gap-1">
+              {currentToppings.map((topping: any, idx: number) => (
+                <span key={idx} className="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded text-xs">
+                  {topping.name} ({topping.quantity})
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+        
+        {currentIngredients.length > 0 && (
+          <>
+            <div className="font-medium text-gray-700">Ingredients:</div>
+            <div className="flex flex-wrap gap-1">
+              {currentIngredients.map((ingredient: any, idx: number) => (
+                <span key={idx} className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-xs">
+                  {ingredient.name} ({ingredient.quantity})
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
   }
 
   // Create maps for easy lookup
@@ -385,7 +518,6 @@ const OrderDetails = () => {
         // Replace fetch with api instance
         const response = await api.get(`/api/admin/getOrderDetails/${id}`); // Corrected path
         setOrder(response.data);
-        console.log("Order Details:", response.data);
       } catch (error) {
         console.error("Error:", error);
       } finally {
@@ -519,6 +651,11 @@ const OrderDetails = () => {
                     const baseName = item.comboStyleItem.name || 'Combo Style Item';
                     const size = item.size;
                     return `${baseName} (${size})`;
+                  } else if (item.userChoiceId && item.userChoiceDetails) {
+                    return item.userChoiceDetails.name;
+                  } else if (item.userChoiceDetails && item.userChoiceDetails.name) {
+                    // Fallback user choice detection
+                    return item.userChoiceDetails.name;
                   } else if (item.isCombo) {
                     return item.combo?.name || 'Combo Item';
                   } else if (item.isOtherItem) {
@@ -527,6 +664,11 @@ const OrderDetails = () => {
                       item.title ||
                       item.name ||
                       'Other Item';
+                  } else if (!item.pizzaId && !item.comboId && !item.otherItemId && 
+                            !item.comboStyleItemId && !item.userChoiceId &&
+                            item.price && parseFloat(String(item.price)) > 50) {
+                    // Detect orphaned user choice items by price and lack of other identifiers
+                    return 'User Choice Deal (Legacy)';
                   } else {
                     return item.pizza?.name || 'Custom Pizza';
                   }
@@ -540,11 +682,13 @@ const OrderDetails = () => {
                           src={
                             item.comboStyleItemId
                               ? `${API_IMG_URL}/images/combostyle-${item.comboStyleItemId}.png`
-                              : item.isCombo
-                                ? `${API_IMG_URL}/images/combo-${item.comboId}.png`
-                                : item.isOtherItem
-                                  ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
-                                  : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
+                              : item.userChoiceId && item.userChoice?.imageUrl
+                                ? `${API_IMG_URL}${item.userChoice.imageUrl}`
+                                : item.isCombo
+                                  ? `${API_IMG_URL}/images/combo-${item.comboId}.png`
+                                  : item.isOtherItem
+                                    ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
+                                    : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
                           }
                           alt={getItemName()}
                           className="h-12 w-12 rounded-md object-cover flex-shrink-0"
@@ -579,6 +723,13 @@ const OrderDetails = () => {
                             item={item}
                             isMobile={true}
                             sidesAndDrinksLookup={sidesAndDrinks}
+                          />
+                        </div>
+                      ) : item.userChoiceId || item.userChoiceDetails ? (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <UserChoiceDetails
+                            item={item}
+                            isMobile={true}
                           />
                         </div>
                       ) : !item.isCombo && !item.isOtherItem ? (
@@ -622,6 +773,11 @@ const OrderDetails = () => {
                       const baseName = item.comboStyleItem.name || 'Combo Style Item';
                       const size = item.size;
                       return `${baseName} (${size})`;
+                    } else if (item.userChoiceId && item.userChoiceDetails) {
+                      return item.userChoiceDetails.name;
+                    } else if (item.userChoiceDetails && item.userChoiceDetails.name) {
+                      // Fallback user choice detection
+                      return item.userChoiceDetails.name;
                     } else if (item.isCombo) {
                       return item.combo?.name || 'Combo Item';
                     } else if (item.isOtherItem) {
@@ -630,6 +786,11 @@ const OrderDetails = () => {
                         item.title ||
                         item.name ||
                         'Other Item';
+                    } else if (!item.pizzaId && !item.comboId && !item.otherItemId && 
+                              !item.comboStyleItemId && !item.userChoiceId &&
+                              item.price && parseFloat(String(item.price)) > 50) {
+                      // Detect orphaned user choice items by price and lack of other identifiers
+                      return 'User Choice Deal (Legacy)';
                     } else {
                       return item.pizza?.name || 'Custom Pizza';
                     }
@@ -643,11 +804,13 @@ const OrderDetails = () => {
                             src={
                               item.comboStyleItemId
                                 ? `${API_IMG_URL}/images/combo-style-${item.comboStyleItemId}.png`
-                                : item.isCombo
-                                  ? `${API_IMG_URL}/images/combo-${item.comboId}.png`
-                                  : item.isOtherItem
-                                    ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
-                                    : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
+                                : item.userChoiceId && item.userChoice?.imageUrl
+                                  ? `${API_IMG_URL}${item.userChoice.imageUrl}`
+                                  : item.isCombo
+                                    ? `${API_IMG_URL}/images/combo-${item.comboId}.png`
+                                    : item.isOtherItem
+                                      ? `${API_IMG_URL}/images/other-${item.otherItemId}.png`
+                                      : `${API_IMG_URL}/images/pizza-${item.pizzaId}.png`
                             }
                             alt={getItemName()}
                             className="h-10 w-10 rounded-md object-cover"
@@ -670,6 +833,11 @@ const OrderDetails = () => {
                             item={item}
                             isMobile={false}
                             sidesAndDrinksLookup={sidesAndDrinks}
+                          />
+                        ) : item.userChoiceId || item.userChoiceDetails ? (
+                          <UserChoiceDetails
+                            item={item}
+                            isMobile={false}
                           />
                         ) : !item.isCombo && !item.isOtherItem ? (
                           <PizzaModifications
