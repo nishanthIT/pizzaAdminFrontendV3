@@ -25,6 +25,7 @@ interface OrderDetails {
   paymentId: string;
   paymentStatus: string;
   createdAt: string;
+  customerNotes?: string; // Add customer notes field
 
   user: {
     name: string;
@@ -44,6 +45,7 @@ interface OrderDetails {
     otherItemId?: string;
     comboStyleItemId?: string; // Add combo style item ID
     userChoiceId?: string; // Add user choice ID
+    pizzaBuilderDealId?: string; // Add pizza builder deal ID
     sauce?: string; // Add sauce field
     selectedSidesNames?: string; // Add selected sides (JSON string)
     selectedDrinksNames?: string; // Add selected drinks (JSON string)
@@ -598,6 +600,16 @@ const OrderDetails = () => {
                 </div>
               </div>
             )}
+            {order.customerNotes && (
+              <div className="border-t pt-4">
+                <p className="font-medium text-sm text-gray-500 mb-2">
+                  Special Instructions
+                </p>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                  <p className="text-sm">{order.customerNotes}</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -707,6 +719,11 @@ const OrderDetails = () => {
                             <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded">
                               Qty: {item.quantity}
                             </span>
+                            {item.pizzaBuilderDealId && (
+                              <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                                Pizza Builder
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
@@ -822,6 +839,11 @@ const OrderDetails = () => {
                             <span className="font-medium">
                               {getItemName()}
                             </span>
+                            {item.pizzaBuilderDealId && (
+                              <span className="ml-2 bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
+                                Pizza Builder
+                              </span>
+                            )}
                           </div>
                         </div>
                       </TableCell>

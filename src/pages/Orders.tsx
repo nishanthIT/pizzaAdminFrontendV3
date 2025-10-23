@@ -883,6 +883,7 @@ interface Order {
   orderTiming: string;
   preorderDate?: string;
   preorderTime?: string;
+  customerNotes?: string; // Add customer notes field
   user: {
     phone: string;
   };
@@ -1332,6 +1333,13 @@ const Orders = () => {
                         <div className="flex items-center gap-2 mb-3">
                           <Phone className="h-3 w-3 text-gray-400" />
                           <span className="text-xs text-gray-600">{order.user.phone}</span>
+                          {order.customerNotes && (
+                            <div className="ml-auto">
+                              <Badge className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5">
+                                📝 Notes
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="mb-3">
@@ -1410,9 +1418,16 @@ const Orders = () => {
                               <div className="font-medium">{order.customerName}</div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-1">
-                                <Phone className="h-3 w-3 text-gray-400" />
-                                {order.user.phone}
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <Phone className="h-3 w-3 text-gray-400" />
+                                  {order.user.phone}
+                                </div>
+                                {order.customerNotes && (
+                                  <Badge className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5">
+                                    📝
+                                  </Badge>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>

@@ -19,6 +19,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import OtherItems from "./pages/OtherItems";
 import ComboStyleItems from "./pages/ComboStyleItems";
 import UserChoices from "./pages/UserChoices";
+import PizzaBuilder from "./pages/PizzaBuilder";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,10 @@ const App = () => (
                             <Route
                               path="/user-choices"
                               element={<UserChoices />}
+                            />
+                            <Route
+                              path="/pizza-builder"
+                              element={<PizzaBuilder />}
                             />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
