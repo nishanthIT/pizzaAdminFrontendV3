@@ -20,6 +20,7 @@ import OtherItems from "./pages/OtherItems";
 import ComboStyleItems from "./pages/ComboStyleItems";
 import UserChoices from "./pages/UserChoices";
 import PizzaBuilder from "./pages/PizzaBuilder";
+import SpecialOffer from "./pages/SpecialOffer";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,10 @@ const App = () => (
                             <Route
                               path="/pizza-builder"
                               element={<PizzaBuilder />}
+                            />
+                            <Route
+                              path="/special-offer"
+                              element={<SpecialOffer />}
                             />
                             <Route path="*" element={<NotFound />} />
                           </Routes>

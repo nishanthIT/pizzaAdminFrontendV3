@@ -46,6 +46,9 @@ interface OrderDetails {
     comboStyleItemId?: string; // Add combo style item ID
     userChoiceId?: string; // Add user choice ID
     pizzaBuilderDealId?: string; // Add pizza builder deal ID
+    selectedToppings?: string; // Pizza Builder selected toppings (JSON string)
+    maxToppings?: number; // Pizza Builder max toppings allowed
+    pizzaBuilderToppings?: string; // Pizza Builder topping summary
     sauce?: string; // Add sauce field
     selectedSidesNames?: string; // Add selected sides (JSON string)
     selectedDrinksNames?: string; // Add selected drinks (JSON string)
@@ -76,6 +79,10 @@ interface OrderDetails {
       imageUrl?: string;
     };
     userChoice?: { // Add user choice relation
+      name: string;
+      imageUrl?: string;
+    };
+    pizzaBuilderDeal?: { // Add Pizza Builder deal relation
       name: string;
       imageUrl?: string;
     };
@@ -416,6 +423,107 @@ const PizzaModifications = ({ item, onFetchPizza, isMobile }: {
       {allToppings.length === 0 && (
         <div className={`${textSize} text-gray-500`}>
           No toppings
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Component to show Pizza Builder details (selected toppings, max toppings, size info)
+const PizzaBuilderDetails = ({ item, isMobile }: {
+  item: any,
+  isMobile: boolean
+}) => {
+  const containerClass = isMobile ? 'mt-2 space-y-2' : 'text-sm space-y-2';
+  const textSize = isMobile ? 'text-xs' : 'text-sm';
+  const badgeSize = isMobile ? 'text-xs px-1.5 py-0.5' : 'text-xs px-2 py-1';
+
+  // Use the stored summary if available
+  if (item.pizzaBuilderToppings) {
+    return (
+      <div className={containerClass}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-semibold">
+              PIZZA BUILDER
+            </span>
+            <span className={`${textSize} text-gray-600`}>
+              Size: {item.size}
+            </span>
+          </div>
+          <div className={`${textSize} text-gray-700`}>
+            {item.pizzaBuilderToppings}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback to parsing JSON if no summary stored
+  let selectedToppings: { [key: string]: string } = {};
+  try {
+    if (item.selectedToppings) {
+      selectedToppings = JSON.parse(item.selectedToppings);
+    }
+  } catch (e) {
+    console.error('Error parsing Pizza Builder selectedToppings:', e);
+  }
+
+  // Use orderToppings if available (preferred), otherwise fall back to JSON
+  const toppings = item.orderToppings && item.orderToppings.length > 0 
+    ? item.orderToppings.map((ot: any) => ot.name)
+    : Object.values(selectedToppings);
+
+  const toppingCount = toppings.length;
+  const maxToppings = item.maxToppings || 0;
+  const extraToppings = Math.max(0, toppingCount - maxToppings);
+
+  return (
+    <div className={containerClass}>
+      {/* Pizza Builder Info */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-semibold">
+          PIZZA BUILDER
+        </span>
+        <span className={`${textSize} text-gray-600`}>
+          Size: {item.size}
+        </span>
+        <span className={`${textSize} text-gray-600`}>
+          Selected toppings {toppingCount}/{maxToppings}
+          {extraToppings > 0 && ` (+${extraToppings} extra)`}
+        </span>
+      </div>
+
+      {/* Selected Toppings */}
+      {toppings.length > 0 && (
+        <div>
+          <span className={`${textSize} text-gray-700 font-medium`}>
+            Toppings:
+          </span>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {toppings.map((toppingName: string, idx: number) => {
+              const isExtra = idx >= maxToppings;
+              const badgeColor = isExtra
+                ? 'bg-red-50 text-red-700 border border-red-200'
+                : 'bg-green-50 text-green-700 border border-green-200';
+
+              return (
+                <span
+                  key={`pb-topping-${idx}`}
+                  className={`${badgeColor} ${badgeSize} rounded-md inline-flex items-center font-medium`}
+                >
+                  {toppingName}
+                  {isExtra && ' (£)'}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {toppings.length === 0 && (
+        <div className={`${textSize} text-gray-500`}>
+          No toppings selected
         </div>
       )}
     </div>
@@ -785,7 +893,9 @@ const OrderDetails = () => {
                 {order.orderItems.map((item) => {
                   // Get item name with fallback
                   const getItemName = () => {
-                    if (item.comboStyleItemId && item.comboStyleItem) {
+                    if (item.pizzaBuilderDealId) {
+                      return item.pizzaBuilderDeal?.name || 'Custom Pizza Builder';
+                    } else if (item.comboStyleItemId && item.comboStyleItem) {
                       // For combo-style items, show the item name with size
                       const baseName = item.comboStyleItem.name || 'Combo Style Item';
                       const size = item.size;
@@ -819,7 +929,9 @@ const OrderDetails = () => {
                         <div className="flex items-center gap-3">
                           <img
                             src={
-                              item.comboStyleItemId
+                              item.pizzaBuilderDealId
+                                ? `${API_IMG_URL}/images/pizza-builder-${item.pizzaBuilderDealId}.png`
+                                : item.comboStyleItemId
                                 ? `${API_IMG_URL}/images/combo-style-${item.comboStyleItemId}.png`
                                 : item.userChoiceId && item.userChoice?.imageUrl
                                   ? `${API_IMG_URL}${item.userChoice.imageUrl}`
@@ -840,8 +952,8 @@ const OrderDetails = () => {
                               {getItemName()}
                             </span>
                             {item.pizzaBuilderDealId && (
-                              <span className="ml-2 bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
-                                Pizza Builder
+                              <span className="ml-2 bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-semibold">
+                                PIZZA BUILDER
                               </span>
                             )}
                           </div>
@@ -855,6 +967,11 @@ const OrderDetails = () => {
                             item={item}
                             isMobile={false}
                             sidesAndDrinksLookup={sidesAndDrinks}
+                          />
+                        ) : item.pizzaBuilderDealId ? (
+                          <PizzaBuilderDetails
+                            item={item}
+                            isMobile={false}
                           />
                         ) : item.userChoiceId || item.userChoiceDetails ? (
                           <UserChoiceDetails

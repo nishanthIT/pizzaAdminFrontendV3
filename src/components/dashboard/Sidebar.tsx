@@ -16,6 +16,7 @@ import {
   ChefHat,
   UserCog,
   Shapes,
+  Tag,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -68,6 +69,7 @@ const Sidebar = () => {
     { icon: ChefHat, label: "Combo Style Items", href: "/combo-style-items" },
     { icon: UserCog, label: "User Choices", href: "/user-choices" },
     { icon: Shapes, label: "Pizza Builder", href: "/pizza-builder" },
+    { icon: Tag, label: "Special Offer", href: "/special-offer" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];
 

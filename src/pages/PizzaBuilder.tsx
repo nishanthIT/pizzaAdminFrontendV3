@@ -29,15 +29,6 @@ const PIZZA_BASES = [
   'Gluten Free'
 ];
 
-const PIZZA_SAUCES = [
-  'Tomato Sauce',
-  'BBQ Sauce',
-  'White Sauce',
-  'Pesto',
-  'Garlic Butter',
-  'Hot Sauce'
-];
-
 interface Pizza {
   id: string;
   name: string;
@@ -66,9 +57,12 @@ interface PizzaBuilderDeal {
   displayCategoryId: string;
   availableBases: string[];
   availableSizes: string[];
-  availableSauces: string[];
   availableToppings: string[];
+  toppingsData?: Record<string, string>; // New field for {id: name} format
   sizePricing: Record<string, number>;
+  mediumPrice: number | null;
+  largePrice: number | null;
+  superSizePrice: number | null;
   isActive: boolean;
   displayCategory?: {
     id: string;
@@ -96,10 +90,13 @@ const PizzaBuilder = () => {
     displayCategoryId: '',
     maxToppings: 4,
     availableBases: ['Thin Crust', 'Deep Pan', 'Stuffed Crust', 'Classic Crust'] as string[], // All bases available by default
-    availableSizes: ['MEDIUM', 'LARGE', 'SUPER_SIZE'] as string[], // All sizes available by default (no pricing needed)
-    availableSauces: ['Tomato Sauce', 'BBQ Sauce', 'White Sauce', 'Pesto', 'Garlic Butter'] as string[], // All sauces available by default
-    availableToppings: [] as string[],
+    availableSizes: ['MEDIUM', 'LARGE', 'SUPER_SIZE'] as string[], // All sizes available by default
+    availableToppings: [] as string[], // Will store topping names for compatibility
+    toppingsData: {} as Record<string, string>, // Store {id: name} format for database
     sizePricing: {}, // Keep for backward compatibility but not used
+    mediumPrice: '',
+    largePrice: '',
+    superSizePrice: '',
     isActive: true
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -147,10 +144,11 @@ const PizzaBuilder = () => {
       setToppings(activeToppings);
       
       // Auto-select all toppings by default for new deals
-      if (!editingDeal && formData.availableToppings.length === 0) {
+      if (!editingDeal && (!Array.isArray(formData.availableToppings) || formData.availableToppings.length === 0)) {
         setFormData(prev => ({
           ...prev,
-          availableToppings: activeToppings.map(t => t.name)
+          availableToppings: activeToppings.map(t => t.name),
+          toppingsData: Object.fromEntries(activeToppings.map(t => [t.id, t.name]))
         }));
       }
     } catch (error) {
@@ -190,22 +188,35 @@ const PizzaBuilder = () => {
     }));
   };
 
-  const handleSauceToggle = (sauce: string) => {
-    setFormData(prev => ({
-      ...prev,
-      availableSauces: prev.availableSauces.includes(sauce)
-        ? prev.availableSauces.filter(s => s !== sauce)
-        : [...prev.availableSauces, sauce]
-    }));
-  };
-
-  const handleToppingToggle = (toppingName: string) => {
-    setFormData(prev => ({
-      ...prev,
-      availableToppings: prev.availableToppings.includes(toppingName)
-        ? prev.availableToppings.filter(name => name !== toppingName)
-        : [...prev.availableToppings, toppingName]
-    }));
+  const handleToppingToggle = (topping: Topping) => {
+    // Ensure availableToppings is always an array
+    const currentToppings = Array.isArray(formData.availableToppings) ? formData.availableToppings : [];
+    const isSelected = currentToppings.includes(topping.name);
+    
+    if (isSelected) {
+      // Remove topping
+      setFormData(prev => ({
+        ...prev,
+        availableToppings: Array.isArray(prev.availableToppings) 
+          ? prev.availableToppings.filter(name => name !== topping.name)
+          : [],
+        toppingsData: Object.fromEntries(
+          Object.entries(prev.toppingsData).filter(([id]) => id !== topping.id)
+        )
+      }));
+    } else {
+      // Add topping
+      setFormData(prev => ({
+        ...prev,
+        availableToppings: Array.isArray(prev.availableToppings) 
+          ? [...prev.availableToppings, topping.name]
+          : [topping.name],
+        toppingsData: {
+          ...prev.toppingsData,
+          [topping.id]: topping.name
+        }
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -221,10 +232,20 @@ const PizzaBuilder = () => {
       return;
     }
 
-    if (formData.availableToppings.length === 0) {
+    if (!Array.isArray(formData.availableToppings) || formData.availableToppings.length === 0) {
       toast({
         title: "Validation Error",
         description: "Please select at least one topping",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate that at least one price is provided
+    if (!formData.mediumPrice && !formData.largePrice && !formData.superSizePrice) {
+      toast({
+        title: "Validation Error",
+        description: "Please provide at least one size price",
         variant: "destructive"
       });
       return;
@@ -240,9 +261,27 @@ const PizzaBuilder = () => {
       submitData.append('maxToppings', formData.maxToppings.toString());
       submitData.append('availableBases', JSON.stringify(formData.availableBases));
       submitData.append('availableSizes', JSON.stringify(formData.availableSizes));
-      submitData.append('availableSauces', JSON.stringify(formData.availableSauces));
-      submitData.append('availableToppings', JSON.stringify(formData.availableToppings));
-      submitData.append('sizePricing', JSON.stringify({})); // Empty pricing object
+      // Remove availableToppings - now using toppingsData instead
+      submitData.append('toppingsData', JSON.stringify(formData.toppingsData)); // Send {id: name} format
+      
+      // DEBUG: Log what we're sending
+      console.log('=== FRONTEND DEBUG ===');
+      console.log('formData.toppingsData:', formData.toppingsData);
+      console.log('JSON.stringify(formData.toppingsData):', JSON.stringify(formData.toppingsData));
+      console.log('formData.availableToppings (should not be used):', formData.availableToppings);
+      console.log('=== END FRONTEND DEBUG ===');
+      
+      // Add individual price fields
+      if (formData.mediumPrice) {
+        submitData.append('mediumPrice', formData.mediumPrice);
+      }
+      if (formData.largePrice) {
+        submitData.append('largePrice', formData.largePrice);
+      }
+      if (formData.superSizePrice) {
+        submitData.append('superSizePrice', formData.superSizePrice);
+      }
+      
       submitData.append('isActive', formData.isActive.toString());
       
       if (selectedFile) {
@@ -283,16 +322,53 @@ const PizzaBuilder = () => {
 
   const handleEdit = (deal: PizzaBuilderDeal) => {
     setEditingDeal(deal);
+    
+    // Ensure availableToppings is always an array
+    let availableToppingsArray: string[] = [];
+    if (Array.isArray(deal.availableToppings)) {
+      availableToppingsArray = deal.availableToppings;
+    } else if (deal.availableToppings && typeof deal.availableToppings === 'object') {
+      // If it's an object, extract the values
+      availableToppingsArray = Object.values(deal.availableToppings);
+    } else if (typeof deal.availableToppings === 'string') {
+      // If it's a string, try to parse it
+      try {
+        const parsed = JSON.parse(deal.availableToppings);
+        availableToppingsArray = Array.isArray(parsed) ? parsed : Object.values(parsed);
+      } catch {
+        availableToppingsArray = [];
+      }
+    }
+    
+    // Build toppingsData - prefer existing toppingsData if available, otherwise convert from availableToppings
+    let toppingsDataMap: Record<string, string> = {};
+    
+    if (deal.toppingsData && typeof deal.toppingsData === 'object') {
+      // Use existing toppingsData if available
+      toppingsDataMap = deal.toppingsData;
+    } else {
+      // Convert from old availableToppings format
+      availableToppingsArray.forEach(toppingName => {
+        const toppingObj = toppings.find(t => t.name === toppingName);
+        if (toppingObj) {
+          toppingsDataMap[toppingObj.id] = toppingObj.name;
+        }
+      });
+    }
+    
     setFormData({
       name: deal.name,
       description: deal.description || '',
       displayCategoryId: deal.displayCategoryId,
       maxToppings: deal.maxToppings,
-      availableBases: deal.availableBases || [],
-      availableSizes: deal.availableSizes,
-      availableSauces: deal.availableSauces || [],
-      availableToppings: deal.availableToppings,
+      availableBases: Array.isArray(deal.availableBases) ? deal.availableBases : [],
+      availableSizes: Array.isArray(deal.availableSizes) ? deal.availableSizes : [],
+      availableToppings: availableToppingsArray,
+      toppingsData: toppingsDataMap,
       sizePricing: deal.sizePricing,
+      mediumPrice: deal.mediumPrice?.toString() || '',
+      largePrice: deal.largePrice?.toString() || '',
+      superSizePrice: deal.superSizePrice?.toString() || '',
       isActive: deal.isActive
     });
     setImagePreview(deal.imageUrl ? `${API_URL}/images/${deal.imageUrl}` : '');
@@ -346,9 +422,12 @@ const PizzaBuilder = () => {
       maxToppings: 4,
       availableBases: ['Thin Crust', 'Deep Pan', 'Stuffed Crust', 'Classic Crust'],
       availableSizes: ['MEDIUM', 'LARGE', 'SUPER_SIZE'], // All sizes by default
-      availableSauces: ['Tomato Sauce', 'BBQ Sauce', 'White Sauce', 'Pesto', 'Garlic Butter'],
       availableToppings: toppings.map(t => t.name), // All toppings by default
+      toppingsData: Object.fromEntries(toppings.map(t => [t.id, t.name])), // All toppings {id: name}
       sizePricing: {},
+      mediumPrice: '',
+      largePrice: '',
+      superSizePrice: '',
       isActive: true
     });
     setSelectedFile(null);
@@ -447,6 +526,50 @@ const PizzaBuilder = () => {
                     <img src={imagePreview} alt="Preview" className="mt-2 h-32 object-cover rounded" />
                   )}
                 </div>
+
+                {/* Pricing Section */}
+                <div>
+                  <Label>Size Pricing *</Label>
+                  <div className="grid grid-cols-3 gap-4 mt-2">
+                    <div>
+                      <Label htmlFor="mediumPrice" className="text-sm">Medium Price (£)</Label>
+                      <Input
+                        id="mediumPrice"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={formData.mediumPrice}
+                        onChange={(e) => setFormData(prev => ({ ...prev, mediumPrice: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="largePrice" className="text-sm">Large Price (£)</Label>
+                      <Input
+                        id="largePrice"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={formData.largePrice}
+                        onChange={(e) => setFormData(prev => ({ ...prev, largePrice: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="superSizePrice" className="text-sm">Super Size Price (£)</Label>
+                      <Input
+                        id="superSizePrice"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={formData.superSizePrice}
+                        onChange={(e) => setFormData(prev => ({ ...prev, superSizePrice: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">Provide at least one size price</p>
+                </div>
               </div>
 
 
@@ -459,14 +582,25 @@ const PizzaBuilder = () => {
                     <div key={topping.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={`topping-${topping.id}`}
-                        checked={formData.availableToppings.includes(topping.name)}
-                        onCheckedChange={() => handleToppingToggle(topping.name)}
+                        checked={Array.isArray(formData.availableToppings) && formData.availableToppings.includes(topping.name)}
+                        onCheckedChange={() => handleToppingToggle(topping)}
                       />
                       <label htmlFor={`topping-${topping.id}`} className="text-sm cursor-pointer">
                         {topping.name}
                       </label>
                     </div>
                   ))}
+                </div>
+                
+                {/* Preview of toppingsData format */}
+                <div className="mt-3">
+                  <Label className="text-sm text-gray-600">Preview (Database Format):</Label>
+                  <Textarea
+                    value={JSON.stringify(formData.toppingsData, null, 2)}
+                    readOnly
+                    className="mt-1 text-xs bg-gray-50 max-h-32"
+                    placeholder="Selected toppings will appear here in {id: name} format"
+                  />
                 </div>
               </div>
 
@@ -559,9 +693,17 @@ const PizzaBuilder = () => {
                 <p><strong>Category:</strong> {deal.displayCategory?.name}</p>
                 <p><strong>Max Toppings:</strong> {deal.maxToppings}</p>
                 <p><strong>Bases:</strong> {deal.availableBases?.length || 0}</p>
-                <p><strong>Sauces:</strong> {deal.availableSauces?.length || 0}</p>
                 <p><strong>Sizes:</strong> {deal.availableSizes.join(', ')}</p>
-                <p><strong>Toppings:</strong> {deal.availableToppings.length}</p>
+                <p><strong>Toppings:</strong> {(() => {
+                  if (deal.toppingsData && typeof deal.toppingsData === 'object') {
+                    // New format: {id: name, id: name} - show total count
+                    const toppingsCount = Object.keys(deal.toppingsData).length;
+                    return `${toppingsCount} available toppings`;
+                  } else {
+                    // Old format: ["name1", "name2"]
+                    return `${deal.availableToppings?.length || 0} items (old format)`;
+                  }
+                })()}</p>
               </div>
             </CardContent>
           </Card>
